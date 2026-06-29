@@ -20,7 +20,6 @@ class ConsoleManager:
             force_terminal=config.colors,
             width=120,
             soft_wrap=True,
-            legacy_windows=False,
         )
 
     def print(self, *args: Any, **kwargs: Any) -> None:

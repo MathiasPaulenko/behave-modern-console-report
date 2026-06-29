@@ -7,9 +7,7 @@ forwards Behave events to the Collector and asks the Renderer to produce output.
 
 from __future__ import annotations
 
-import os
 import sys
-import time
 from typing import Any
 
 from behave.formatter.base import Formatter
@@ -45,11 +43,18 @@ class ModernConsoleFormatter(Formatter):
         self._renderer = Renderer(self._config, self._theme)
         self._live: Any | None = None
         self._closed = False
-        self._custom_live = False
-        self._last_refresh = 0.0
 
         if self._config.is_interactive and sys.stdout.isatty():
-            self._custom_live = True
+            from rich.live import Live
+
+            self._live = Live(
+                console=self._console_manager.console,
+                auto_refresh=True,
+                refresh_per_second=2,
+                screen=False,
+                vertical_overflow="visible",
+            )
+            self._live.start(refresh=True)
             self._refresh()
         elif self._config.verbosity != Verbosity.MINIMAL:
             self._console_manager.console.print(
@@ -93,12 +98,9 @@ class ModernConsoleFormatter(Formatter):
         self._closed = True
         self._collector.finish()
 
-        if self._custom_live:
-            self._clear_screen()
-            self._console_manager.console.print(
-                self._renderer.render(self._collector.execution, is_final=True)
-            )
-            self._console_manager.console.file.flush()
+        if self._live is not None:
+            self._live.update(self._renderer.render(self._collector.execution, is_final=True))
+            self._live.stop()
         else:
             self._ci_refresh()
             if self._config.show_progress:
@@ -115,16 +117,8 @@ class ModernConsoleFormatter(Formatter):
 
     def _refresh(self) -> None:
         """Refresh the display based on the current execution model."""
-        if self._custom_live:
-            now = time.monotonic()
-            if now - self._last_refresh < 0.5:
-                return
-            self._last_refresh = now
-            self._clear_screen()
-            self._console_manager.console.print(
-                self._renderer.render(self._collector.execution)
-            )
-            self._console_manager.console.file.flush()
+        if self._live is not None:
+            self._live.update(self._renderer.render(self._collector.execution))
         elif not self._config.is_interactive:
             self._ci_refresh()
 
@@ -132,60 +126,6 @@ class ModernConsoleFormatter(Formatter):
         """Print incremental CI output."""
         for line in self._renderer.next_ci_lines(self._collector.execution):
             self._console_manager.console.print(line)
-
-    def _clear_screen(self) -> None:
-        """Clear the terminal screen using the Windows Console API or ANSI."""
-        if os.name == "nt":
-            try:
-                import ctypes
-                import struct
-
-                STD_OUTPUT_HANDLE = -11
-                hOut = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
-                csbi = ctypes.create_string_buffer(22)
-                if ctypes.windll.kernel32.GetConsoleScreenBufferInfo(hOut, csbi):
-                    (
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        left,
-                        top,
-                        right,
-                        bottom,
-                        _,
-                        _,
-                    ) = struct.unpack("hhhhHhhhhhh", csbi.raw)
-                    columns = right - left + 1
-                    rows = bottom - top + 1
-                    written = ctypes.c_ulong(0)
-                    ctypes.windll.kernel32.FillConsoleOutputCharacterA(
-                        hOut,
-                        ctypes.c_char(b" "),
-                        columns * rows,
-                        ctypes.c_ulong(0),
-                        ctypes.byref(written),
-                    )
-                    ctypes.windll.kernel32.SetConsoleCursorPosition(
-                        hOut, ctypes.c_ulong(0)
-                    )
-                    return
-            except Exception:
-                pass
-            try:
-                os.system("cls")
-            except Exception:
-                pass
-        else:
-            try:
-                self._console_manager.console.print("\033[2J\033[H", end="")
-                self._console_manager.console.file.flush()
-            except Exception:
-                try:
-                    os.system("clear")
-                except Exception:
-                    pass
 
     # Optional Behave event hooks provided for completeness.
 
