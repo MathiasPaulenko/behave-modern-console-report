@@ -1,0 +1,116 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "behave-modern-console-report"
+version = "0.1.0"
+description = "A modern, real-time console report formatter for Behave."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Mathias Paulenko", email = "mpaulenko@example.com" },
+]
+keywords = [
+    "behave",
+    "bdd",
+    "formatter",
+    "console",
+    "terminal",
+    "reporting",
+    "rich",
+    "cli",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Testing :: BDD",
+    "Typing :: Typed",
+]
+dependencies = [
+    "behave>=1.2.6",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.11.0",
+]
+
+[project.entry-points."behave.formatters"]
+modern = "behave_modern_console_report.formatter:ModernConsoleFormatter"
+
+[project.urls]
+Homepage = "https://github.com/MathiasPaulenko/behave-modern-console-report"
+Documentation = "https://github.com/MathiasPaulenko/behave-modern-console-report#readme"
+Repository = "https://github.com/MathiasPaulenko/behave-modern-console-report"
+Issues = "https://github.com/MathiasPaulenko/behave-modern-console-report/issues"
+Changelog = "https://github.com/MathiasPaulenko/behave-modern-console-report/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["behave_modern_console_report"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "N",
+    "W",
+    "UP",
+    "B",
+    "C4",
+    "SIM",
+    "ANN",
+    "TCH",
+    "ARG",
+]
+ignore = [
+    "ANN101",  # missing type annotation for self in class methods
+    "ANN102",  # missing type annotation for cls in class methods
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=behave_modern_console_report --cov-report=term-missing --cov-report=xml"
+
+[tool.coverage.run]
+source = ["behave_modern_console_report"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
