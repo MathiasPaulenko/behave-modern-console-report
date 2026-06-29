@@ -215,9 +215,6 @@ class Renderer:
             lines.append(error_type)
             if error.message:
                 lines.append(Text(error.message, style=self.theme.text))
-            if self.config.show_traceback and error.traceback:
-                traceback_text = Text(error.traceback, style=self.theme.muted)
-                lines.append(traceback_text)
 
         return Text("\n").join(lines)
 
