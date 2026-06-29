@@ -91,8 +91,7 @@ class Renderer:
         current_feature: Feature | None = None
         for feature, scenario in scenarios:
             if feature is not current_feature:
-                if current_feature is not None:
-                    lines.append(Text(""))
+                lines.append(Text(""))
                 header = f"Feature: {feature.name or 'Unknown'}"
                 lines.append(Text(header, style=self.theme.header))
                 current_feature = feature
