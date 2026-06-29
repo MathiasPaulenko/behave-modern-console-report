@@ -48,7 +48,7 @@ class ModernConsoleFormatter(Formatter):
         self._custom_live = False
         self._last_refresh = 0.0
 
-        if sys.stdout.isatty():
+        if self._config.is_interactive and sys.stdout.isatty():
             self._custom_live = True
             self._refresh()
         elif self._config.verbosity != Verbosity.MINIMAL:
