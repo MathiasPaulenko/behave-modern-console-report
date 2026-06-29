@@ -44,9 +44,10 @@ class Renderer:
         recompute_execution(execution)
         parts: list[RenderableType] = []
 
-        if not self._header_rendered and self.config.verbosity != Verbosity.MINIMAL:
-            parts.append(self.render_header(execution))
-            self._header_rendered = True
+        if self.config.verbosity != Verbosity.MINIMAL:
+            if self.config.is_interactive or not self._header_rendered:
+                parts.append(self.render_header(execution))
+                self._header_rendered = True
 
         if self.config.verbosity != Verbosity.MINIMAL:
             # In CI mode, scenarios are printed incrementally via next_ci_lines,
