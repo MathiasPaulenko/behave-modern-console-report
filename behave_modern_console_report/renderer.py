@@ -29,6 +29,7 @@ class Renderer:
         self.theme = theme
         self._header_rendered = False
         self._printed_ids: set[int] = set()
+        self._printed_feature_ids: set[int] = set()
         self._progress_bar = ProgressBar(width=24, theme=theme)
 
     def render(self, execution: Execution, *, is_final: bool = False) -> Text:
@@ -255,6 +256,7 @@ class Renderer:
         """
         recompute_execution(execution)
         for feature in execution.features:
+            feature_id = id(feature)
             for scenario in feature.scenarios:
                 scenario_id = id(scenario)
                 if scenario_id in self._printed_ids:
@@ -266,6 +268,12 @@ class Renderer:
                     Status.UNDEFINED,
                     Status.PENDING,
                 }:
+                    if feature_id not in self._printed_feature_ids:
+                        yield Text(
+                            f"Feature: {feature.name or 'Unknown'}",
+                            style=self.theme.header,
+                        )
+                        self._printed_feature_ids.add(feature_id)
                     self._printed_ids.add(scenario_id)
                     yield self._scenario_line(feature, scenario)
                     if self.config.effective_show_steps():

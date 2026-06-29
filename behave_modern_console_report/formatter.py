@@ -120,14 +120,8 @@ class ModernConsoleFormatter(Formatter):
         if self._live is not None:
             self._live.update(self._renderer.render(self._collector.execution))
         elif not self._config.is_interactive:
-            printed_any = False
             for line in self._renderer.next_ci_lines(self._collector.execution):
                 self._console_manager.console.print(line)
-                printed_any = True
-            if printed_any and self._config.show_progress:
-                self._console_manager.console.print(
-                    self._renderer.render_progress(self._collector.execution)
-                )
 
     # Optional Behave event hooks provided for completeness.
 

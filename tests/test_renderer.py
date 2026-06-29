@@ -119,26 +119,30 @@ def test_next_ci_lines_yields_completed_scenarios() -> None:
     execution = Execution(
         features=[
             Feature(
+                name="F1",
                 scenarios=[
                     Scenario(name="S1", steps=[Step(status=Status.PASSED)]),
                     Scenario(name="S2", steps=[Step(status=Status.FAILED)]),
-                ]
+                ],
             )
         ]
     )
     lines = list(renderer.next_ci_lines(execution))
-    assert len(lines) == 2
-    assert "S1" in lines[0].plain
-    assert "S2" in lines[1].plain
+    assert len(lines) == 3
+    assert "F1" in lines[0].plain
+    assert "S1" in lines[1].plain
+    assert "S2" in lines[2].plain
 
 
 def test_next_ci_lines_does_not_duplicate() -> None:
     config = make_config()
     renderer = Renderer(config, get_theme(config.theme))
     execution = Execution(
-        features=[Feature(scenarios=[Scenario(name="S1", steps=[Step(status=Status.PASSED)])])]
+        features=[Feature(name="F1", scenarios=[Scenario(name="S1", steps=[Step(status=Status.PASSED)])])]
     )
     first = list(renderer.next_ci_lines(execution))
     second = list(renderer.next_ci_lines(execution))
-    assert len(first) == 1
+    assert len(first) == 2
+    assert "F1" in first[0].plain
+    assert "S1" in first[1].plain
     assert len(second) == 0
