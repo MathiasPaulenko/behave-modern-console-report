@@ -132,7 +132,8 @@ class Renderer:
         """Render step-level lines for a scenario.
 
         Untested steps are included so they start gray and switch to the final
-        result color as execution progresses.
+        result color as execution progresses. Failed steps optionally show the
+        traceback indented below them.
         """
         lines: list[Text] = []
         for step in scenario.steps:
@@ -144,6 +145,9 @@ class Renderer:
             if self.config.show_durations and step.duration > 0:
                 line += f"  ({format_duration(step.duration)})"
             lines.append(Text(line, style=style))
+            if self.config.show_traceback and step.error and step.error.traceback:
+                for tb_line in step.error.traceback.splitlines():
+                    lines.append(Text(f"      {tb_line}", style=self.theme.muted))
         return lines
 
     def render_summary(self, execution: Execution) -> Text:
