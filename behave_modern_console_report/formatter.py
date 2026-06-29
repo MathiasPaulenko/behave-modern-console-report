@@ -7,6 +7,9 @@ forwards Behave events to the Collector and asks the Renderer to produce output.
 
 from __future__ import annotations
 
+import os
+import sys
+import time
 from typing import Any
 
 from behave.formatter.base import Formatter
@@ -42,18 +45,11 @@ class ModernConsoleFormatter(Formatter):
         self._renderer = Renderer(self._config, self._theme)
         self._live: Any | None = None
         self._closed = False
+        self._custom_live = False
+        self._last_refresh = 0.0
 
-        if self._config.is_interactive:
-            from rich.live import Live
-
-            self._live = Live(
-                console=self._console_manager.console,
-                auto_refresh=True,
-                refresh_per_second=2,
-                screen=False,
-                vertical_overflow="visible",
-            )
-            self._live.start(refresh=True)
+        if self._config.is_interactive and sys.stdout.isatty():
+            self._custom_live = True
             self._refresh()
         elif self._config.verbosity != Verbosity.MINIMAL:
             self._console_manager.console.print(
@@ -97,9 +93,12 @@ class ModernConsoleFormatter(Formatter):
         self._closed = True
         self._collector.finish()
 
-        if self._live is not None:
-            self._live.update(self._renderer.render(self._collector.execution, is_final=True))
-            self._live.stop()
+        if self._custom_live:
+            self._clear_screen()
+            self._console_manager.console.print(
+                self._renderer.render(self._collector.execution, is_final=True)
+            )
+            self._console_manager.console.file.flush()
         else:
             for line in self._renderer.next_ci_lines(self._collector.execution):
                 self._console_manager.console.print(line)
@@ -117,11 +116,26 @@ class ModernConsoleFormatter(Formatter):
 
     def _refresh(self) -> None:
         """Refresh the display based on the current execution model."""
-        if self._live is not None:
-            self._live.update(self._renderer.render(self._collector.execution))
+        if self._custom_live:
+            now = time.monotonic()
+            if now - self._last_refresh < 0.5:
+                return
+            self._last_refresh = now
+            self._clear_screen()
+            self._console_manager.console.print(
+                self._renderer.render(self._collector.execution)
+            )
+            self._console_manager.console.file.flush()
         elif not self._config.is_interactive:
             for line in self._renderer.next_ci_lines(self._collector.execution):
                 self._console_manager.console.print(line)
+
+    def _clear_screen(self) -> None:
+        """Clear the terminal screen using the OS-specific command."""
+        try:
+            os.system("cls" if os.name == "nt" else "clear")
+        except Exception:
+            pass
 
     # Optional Behave event hooks provided for completeness.
 
