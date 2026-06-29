@@ -119,11 +119,11 @@ class Renderer:
         return all_scenarios
 
     def _scenario_line(self, feature: Feature, scenario: Scenario) -> Text:
-        """Render a single scenario status line."""
+        """Render a single scenario status line indented under its feature."""
         icon = Icons.for_status(scenario.status)
         style = self._status_style(scenario.status)
         name = scenario.name or "Unnamed scenario"
-        line = f"{icon} {name}"
+        line = f"  {icon} {name}"
         if self.config.show_durations and scenario.duration > 0:
             line += f"  ({format_duration(scenario.duration)})"
         return Text(line, style=style)
