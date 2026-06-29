@@ -48,7 +48,7 @@ class ModernConsoleFormatter(Formatter):
         self._custom_live = False
         self._last_refresh = 0.0
 
-        if self._config.is_interactive and sys.stdout.isatty():
+        if sys.stdout.isatty():
             self._custom_live = True
             self._refresh()
         elif self._config.verbosity != Verbosity.MINIMAL:
@@ -100,8 +100,7 @@ class ModernConsoleFormatter(Formatter):
             )
             self._console_manager.console.file.flush()
         else:
-            for line in self._renderer.next_ci_lines(self._collector.execution):
-                self._console_manager.console.print(line)
+            self._ci_refresh()
             if self._config.show_progress:
                 self._console_manager.console.print(
                     self._renderer.render_progress(self._collector.execution)
@@ -127,8 +126,12 @@ class ModernConsoleFormatter(Formatter):
             )
             self._console_manager.console.file.flush()
         elif not self._config.is_interactive:
-            for line in self._renderer.next_ci_lines(self._collector.execution):
-                self._console_manager.console.print(line)
+            self._ci_refresh()
+
+    def _ci_refresh(self) -> None:
+        """Print incremental CI output."""
+        for line in self._renderer.next_ci_lines(self._collector.execution):
+            self._console_manager.console.print(line)
 
     def _clear_screen(self) -> None:
         """Clear the terminal screen using the Windows Console API or ANSI."""
