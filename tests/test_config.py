@@ -48,6 +48,43 @@ def test_config_user_data_overrides_environment() -> None:
     assert config.theme == ThemeName.MONOCHROME
 
 
+def test_config_from_mcr_user_data() -> None:
+    behave_config = FakeBehaveConfig(
+        {
+            "mcr.theme": "dark",
+            "mcr.verbosity": "verbose",
+            "mcr.compact": "true",
+        }
+    )
+    config = Config.from_behave(behave_config)
+    assert config.theme == ThemeName.DARK
+    assert config.verbosity == Verbosity.VERBOSE
+    assert config.compact is True
+
+
+def test_config_mcr_takes_precedence_over_legacy() -> None:
+    behave_config = FakeBehaveConfig(
+        {
+            "mcr.theme": "dark",
+            "modern_console_theme": "light",
+        }
+    )
+    config = Config.from_behave(behave_config)
+    assert config.theme == ThemeName.DARK
+
+
+def test_config_from_mcr_environment() -> None:
+    behave_config = FakeBehaveConfig()
+    env = {
+        "MCR_THEME": "light",
+        "MCR_VERBOSITY": "minimal",
+    }
+    with patch.dict(os.environ, env, clear=True):
+        config = Config.from_behave(behave_config)
+    assert config.theme == ThemeName.LIGHT
+    assert config.verbosity == Verbosity.MINIMAL
+
+
 def test_config_auto_show_steps() -> None:
     config = Config(verbosity=Verbosity.NORMAL, show_steps_auto=True)
     assert config.effective_show_steps() is False

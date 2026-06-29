@@ -74,8 +74,24 @@ def _get_user_data(config: Any) -> dict[str, str]:
 def _get_option(
     user_data: dict[str, str], env_name: str, data_name: str, default: str
 ) -> str:
-    """Read a configuration option from user data or environment."""
-    return user_data.get(data_name, os.environ.get(env_name, default))
+    """Read a configuration option from user data or environment.
+
+    Supports the new ``mcr.*`` naming convention (preferred) as well as the
+    legacy ``modern_console_*`` naming. The new ``mcr.*`` keys take precedence.
+    """
+    mcr_name = data_name.replace("modern_console_", "mcr.")
+    mcr_env_name = env_name.replace("MODERN_CONSOLE_", "MCR_")
+
+    value = user_data.get(mcr_name)
+    if value is not None:
+        return value
+    value = user_data.get(data_name)
+    if value is not None:
+        return value
+    value = os.environ.get(mcr_env_name)
+    if value is not None:
+        return value
+    return os.environ.get(env_name, default)
 
 
 @dataclass

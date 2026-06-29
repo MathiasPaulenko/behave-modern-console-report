@@ -47,25 +47,25 @@ behave --format=modern
 Specify verbosity with Behave user data:
 
 ```bash
-behave --format=modern -D modern_console_verbosity=verbose
+behave --format=modern -D mcr.verbosity=verbose
 ```
 
 Choose a theme:
 
 ```bash
-behave --format=modern -D modern_console_theme=dark
+behave --format=modern -D mcr.theme=dark
 ```
 
 Disable colors (useful for CI):
 
 ```bash
-behave --format=modern -D modern_console_colors=false
+behave --format=modern -D mcr.colors=false
 ```
 
 Run in compact mode:
 
 ```bash
-behave --format=modern -D modern_console_compact=true
+behave --format=modern -D mcr.compact=true
 ```
 
 ---
@@ -121,14 +121,17 @@ Options are read from Behave user data (`-D key=value`) or environment variables
 
 | Option | Environment Variable | Default | Description |
 | --- | --- | --- | --- |
-| `modern_console_theme` | `MODERN_CONSOLE_THEME` | `default` | Output theme. |
-| `modern_console_verbosity` | `MODERN_CONSOLE_VERBOSITY` | `normal` | Output verbosity. |
-| `modern_console_colors` | `MODERN_CONSOLE_COLORS` | `auto` | Enable/disable colors. |
-| `modern_console_compact` | `MODERN_CONSOLE_COMPACT` | `false` | Compact output mode. |
-| `modern_console_show_steps` | `MODERN_CONSOLE_SHOW_STEPS` | `auto` | Show step-level details. |
-| `modern_console_show_durations` | `MODERN_CONSOLE_SHOW_DURATIONS` | `true` | Show scenario durations. |
-| `modern_console_show_progress` | `MODERN_CONSOLE_SHOW_PROGRESS` | `true` | Show progress bar. |
-| `modern_console_show_traceback` | `MODERN_CONSOLE_SHOW_TRACEBACK` | `true` | Show tracebacks on failure. |
+| `mcr.theme` | `MCR_THEME` | `default` | Output theme. |
+| `mcr.verbosity` | `MCR_VERBOSITY` | `normal` | Output verbosity. |
+| `mcr.colors` | `MCR_COLORS` | `auto` | Enable/disable colors. |
+| `mcr.compact` | `MCR_COMPACT` | `false` | Compact output mode. |
+| `mcr.show_steps` | `MCR_SHOW_STEPS` | `auto` | Show step-level details. |
+| `mcr.show_durations` | `MCR_SHOW_DURATIONS` | `true` | Show scenario durations. |
+| `mcr.show_progress` | `MCR_SHOW_PROGRESS` | `true` | Show progress bar. |
+| `mcr.show_traceback` | `MCR_SHOW_TRACEBACK` | `true` | Show tracebacks on failure. |
+| `mcr.live` | `MCR_LIVE` | `auto` | Force live/interactive mode. |
+
+The legacy `modern_console_*` keys are still supported for backwards compatibility.
 
 ---
 
