@@ -47,6 +47,8 @@ class ModernConsoleFormatter(Formatter):
         self._closed = False
         self._custom_live = False
         self._last_refresh = 0.0
+        self._last_progress = 0.0
+        self._last_progress_text = ""
 
         if self._config.is_interactive and sys.stdout.isatty():
             self._custom_live = True
@@ -103,9 +105,9 @@ class ModernConsoleFormatter(Formatter):
             for line in self._renderer.next_ci_lines(self._collector.execution):
                 self._console_manager.console.print(line)
             if self._config.show_progress:
-                self._console_manager.console.print(
-                    self._renderer.render_progress(self._collector.execution)
-                )
+                progress = self._renderer.render_progress(self._collector.execution)
+                if progress.plain != self._last_progress_text:
+                    self._console_manager.console.print(progress)
             self._console_manager.console.print(
                 self._renderer.render_summary(self._collector.execution)
             )
@@ -127,8 +129,19 @@ class ModernConsoleFormatter(Formatter):
             )
             self._console_manager.console.file.flush()
         elif not self._config.is_interactive:
+            printed_any = False
             for line in self._renderer.next_ci_lines(self._collector.execution):
                 self._console_manager.console.print(line)
+                printed_any = True
+            if printed_any and self._config.show_progress:
+                now = time.monotonic()
+                if now - self._last_progress >= 1.0:
+                    progress = self._renderer.render_progress(
+                        self._collector.execution
+                    )
+                    self._last_progress = now
+                    self._last_progress_text = progress.plain
+                    self._console_manager.console.print(progress)
 
     def _clear_screen(self) -> None:
         """Clear the terminal screen using the OS-specific command."""
