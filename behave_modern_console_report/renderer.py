@@ -82,13 +82,20 @@ class Renderer:
         return Text.assemble(line, Text("\n"))
 
     def _scenario_list(self, execution: Execution) -> Text:
-        """Render the list of recent scenarios."""
+        """Render the list of recent scenarios grouped by feature."""
         scenarios = self._visible_scenarios(execution)
         if not scenarios:
             return Text("")
 
         lines: list[Text] = []
+        current_feature: Feature | None = None
         for feature, scenario in scenarios:
+            if feature is not current_feature:
+                if current_feature is not None:
+                    lines.append(Text(""))
+                header = f"Feature: {feature.name or 'Unknown'}"
+                lines.append(Text(header, style=self.theme.header))
+                current_feature = feature
             lines.append(self._scenario_line(feature, scenario))
             if self.config.effective_show_steps():
                 lines.extend(self._step_lines(scenario))
