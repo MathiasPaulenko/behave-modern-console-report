@@ -12,13 +12,13 @@ def step_user_has_items(context: object) -> None:
 
 @when("the user completes the payment")
 def step_user_completes_payment(context: object) -> None:
-    time.sleep(0.3)
+    time.sleep(0.6)
     context.payment = "valid"
 
 
 @when("the user submits an invalid payment")
 def step_user_submits_invalid_payment(context: object) -> None:
-    time.sleep(0.3)
+    time.sleep(0.6)
     context.payment = "invalid"
 
 

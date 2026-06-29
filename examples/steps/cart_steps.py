@@ -8,7 +8,7 @@ from behave import given, then, when
 @given('the user adds "{product}" to the cart')
 @when('the user adds "{product}" to the cart')
 def step_user_adds_product_to_cart(context: object, product: str) -> None:
-    time.sleep(0.3)
+    time.sleep(0.6)
     if not hasattr(context, "cart"):
         context.cart = []
     context.cart.append(product)

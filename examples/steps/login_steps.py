@@ -12,19 +12,19 @@ def step_user_on_login_page(context: object) -> None:
 
 @when("the user enters valid credentials")
 def step_user_enters_valid_credentials(context: object) -> None:
-    time.sleep(0.3)
+    time.sleep(0.6)
     context.credentials = "valid"
 
 
 @when("the user enters invalid credentials")
 def step_user_enters_invalid_credentials(context: object) -> None:
-    time.sleep(0.3)
+    time.sleep(0.6)
     context.credentials = "invalid"
 
 
 @when("the user enters locked account credentials")
 def step_user_enters_locked_credentials(context: object) -> None:
-    time.sleep(0.3)
+    time.sleep(0.6)
     context.credentials = "locked"
 
 

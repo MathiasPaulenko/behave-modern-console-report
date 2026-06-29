@@ -28,7 +28,7 @@ def step_user_sees_at_least_products(context: object, count: int) -> None:
 
 @when('the user searches for "{query}"')
 def step_user_searches(context: object, query: str) -> None:
-    time.sleep(0.3)
+    time.sleep(0.6)
     context.search_query = query
     context.search_results = [
         p for p in context.products if query.lower() in p["name"].lower()
@@ -42,7 +42,7 @@ def step_user_sees_count_products(context: object, count: int) -> None:
 
 @when('the user filters by category "{category}"')
 def step_user_filters_by_category(context: object, category: str) -> None:
-    time.sleep(0.3)
+    time.sleep(0.6)
     context.filter_category = category
     context.filtered_products = [p for p in context.products if p["category"] == category]
 
