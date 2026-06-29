@@ -129,11 +129,13 @@ class Renderer:
         return Text(line, style=style)
 
     def _step_lines(self, scenario: Scenario) -> list[Text]:
-        """Render step-level lines for a scenario."""
+        """Render step-level lines for a scenario.
+
+        Untested steps are included so they start gray and switch to the final
+        result color as execution progresses.
+        """
         lines: list[Text] = []
         for step in scenario.steps:
-            if step.status == Status.UNTESTED:
-                continue
             icon = Icons.for_status(step.status)
             style = self._status_style(step.status)
             keyword = step.keyword or ""
@@ -223,14 +225,18 @@ class Renderer:
         return None
 
     def _status_style(self, status: Status) -> Style:
-        """Return the theme style for a status."""
+        """Return the theme style for a status.
+
+        Running and untested items are rendered in muted gray so they start
+        neutral and switch to their final result color once completed.
+        """
         mapping = {
             Status.PASSED: self.theme.passed,
             Status.FAILED: self.theme.failed,
             Status.SKIPPED: self.theme.skipped,
             Status.UNDEFINED: self.theme.undefined,
             Status.PENDING: self.theme.pending,
-            Status.RUNNING: self.theme.running,
+            Status.RUNNING: self.theme.muted,
             Status.UNTESTED: self.theme.muted,
         }
         return mapping.get(status, self.theme.text)
