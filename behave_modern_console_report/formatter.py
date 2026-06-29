@@ -144,11 +144,58 @@ class ModernConsoleFormatter(Formatter):
                     self._console_manager.console.print(progress)
 
     def _clear_screen(self) -> None:
-        """Clear the terminal screen using the OS-specific command."""
-        try:
-            os.system("cls" if os.name == "nt" else "clear")
-        except Exception:
-            pass
+        """Clear the terminal screen using the Windows Console API or ANSI."""
+        if os.name == "nt":
+            try:
+                import ctypes
+                import struct
+
+                STD_OUTPUT_HANDLE = -11
+                hOut = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
+                csbi = ctypes.create_string_buffer(22)
+                if ctypes.windll.kernel32.GetConsoleScreenBufferInfo(hOut, csbi):
+                    (
+                        _,
+                        _,
+                        _,
+                        _,
+                        _,
+                        left,
+                        top,
+                        right,
+                        bottom,
+                        _,
+                        _,
+                    ) = struct.unpack("hhhhHhhhhhh", csbi.raw)
+                    columns = right - left + 1
+                    rows = bottom - top + 1
+                    written = ctypes.c_ulong(0)
+                    ctypes.windll.kernel32.FillConsoleOutputCharacterA(
+                        hOut,
+                        ctypes.c_char(b" "),
+                        columns * rows,
+                        ctypes.c_ulong(0),
+                        ctypes.byref(written),
+                    )
+                    ctypes.windll.kernel32.SetConsoleCursorPosition(
+                        hOut, ctypes.c_ulong(0)
+                    )
+                    return
+            except Exception:
+                pass
+            try:
+                os.system("cls")
+            except Exception:
+                pass
+        else:
+            try:
+                self._console_manager.console.print("\033[2J\033[H", end="")
+                self._console_manager.console.file.flush()
+            except Exception:
+                try:
+                    os.system("clear")
+                except Exception:
+                    pass
 
     # Optional Behave event hooks provided for completeness.
 
