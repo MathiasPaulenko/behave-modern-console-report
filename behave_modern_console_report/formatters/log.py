@@ -57,6 +57,7 @@ class LogFormatter(BaseFormatter):
                                     )
 
     def _colorize(self, text: str, status: str) -> str:
+        status = status.lower()
         if status == "passed":
             return f"[green]{text}[/green]"
         if status == "skipped":
