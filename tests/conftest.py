@@ -7,9 +7,6 @@ from typing import Any
 
 import pytest
 
-from behave_modern_console_report.config import Config, Verbosity
-from behave_modern_console_report.themes import Theme, ThemeName, get_theme
-
 
 @dataclass
 class FakeTag:
@@ -69,28 +66,3 @@ class FakeBehaveConfig:
 def fake_config() -> FakeBehaveConfig:
     """Return a default fake Behave config."""
     return FakeBehaveConfig()
-
-
-@pytest.fixture
-def minimal_config() -> Config:
-    """Return a minimal Config for testing."""
-    return Config(
-        theme=ThemeName.MINIMAL,
-        verbosity=Verbosity.NORMAL,
-        colors=False,
-        compact=False,
-        show_steps=False,
-        show_steps_auto=False,
-        show_durations=True,
-        show_progress=True,
-        show_environment=False,
-        show_traceback=True,
-        is_ci=False,
-        is_interactive=False,
-    )
-
-
-@pytest.fixture
-def default_theme() -> Theme:
-    """Return the default theme."""
-    return get_theme(ThemeName.DEFAULT)

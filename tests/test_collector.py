@@ -1,12 +1,12 @@
 """Tests for the event collector."""
 
 from behave_modern_console_report.collector import Collector
-from behave_modern_console_report.config import Config
-from tests.conftest import FakeFeature, FakeMatch, FakeScenario, FakeStep
+from behave_modern_console_report.config import FormatterConfig
+from tests.conftest import FakeBehaveConfig, FakeFeature, FakeMatch, FakeScenario, FakeStep
 
 
 def make_collector() -> Collector:
-    return Collector(Config())
+    return Collector(FormatterConfig("modern", FakeBehaveConfig()))
 
 
 def test_add_feature() -> None:

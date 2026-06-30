@@ -86,6 +86,11 @@ class Step:
             Status.PENDING,
         }
 
+    @property
+    def is_failed(self) -> bool:
+        """Return True if the step failed."""
+        return self.status == Status.FAILED
+
 
 @dataclass
 class Scenario:
@@ -122,7 +127,8 @@ class Scenario:
     def update_status(self) -> None:
         """Derive the scenario status from its steps."""
         if not self.steps:
-            self.status = Status.UNTESTED
+            if not self.is_terminal:
+                self.status = Status.UNTESTED
             return
 
         if any(step.status == Status.FAILED for step in self.steps):

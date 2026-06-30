@@ -1,9 +1,23 @@
-"""behave-modern-console-report package.
+"""Behave modern console report formatters.
 
-A modern, real-time console report formatter for Behave.
+This package exposes multiple Behave formatters that can be selected
+independently via the ``[behave.formatters]`` configuration.
 """
 
-__version__ = "0.1.0"
-__all__ = ["ModernConsoleFormatter"]
+from __future__ import annotations
 
-from behave_modern_console_report.formatter import ModernConsoleFormatter
+from behave_modern_console_report.formatters.ci import CIFormatter
+from behave_modern_console_report.formatters.log import LogFormatter
+from behave_modern_console_report.formatters.minimal import MinimalFormatter
+from behave_modern_console_report.formatters.modern import ModernFormatter
+from behave_modern_console_report.formatters.modern_live import ModernLiveFormatter
+from behave_modern_console_report.formatters.progress import ProgressFormatter
+
+__all__ = [
+    "CIFormatter",
+    "LogFormatter",
+    "MinimalFormatter",
+    "ModernFormatter",
+    "ModernLiveFormatter",
+    "ProgressFormatter",
+]

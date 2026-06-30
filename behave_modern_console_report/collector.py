@@ -1,10 +1,4 @@
-"""Collect Behave events and build the internal execution model.
-
-The Collector is the only layer that depends on Behave model objects. It
-translates Behave events into internal ``Execution`` dataclasses and keeps
-track of the current feature, scenario, and step so that partial results can be
-rendered in real time.
-"""
+"""Collect Behave events and build the internal execution model."""
 
 from __future__ import annotations
 
@@ -14,7 +8,7 @@ from behave.model import Feature as BehaveFeature
 from behave.model import Scenario as BehaveScenario
 from behave.model import Step as BehaveStep
 
-from behave_modern_console_report.config import Config
+from behave_modern_console_report.config import FormatterConfig
 from behave_modern_console_report.models import Error, Execution, Feature, Scenario, Status, Step
 from behave_modern_console_report.utils import now
 
@@ -27,7 +21,8 @@ def _tag_name(tag: Any) -> str:
 class Collector:
     """Collects Behave events into an internal execution model."""
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: FormatterConfig) -> None:
+        """Initialize the collector with formatter configuration."""
         self.config = config
         self.execution = Execution(start_time=now())
         self._current_feature: Optional[Feature] = None
@@ -58,6 +53,9 @@ class Collector:
         if self._current_feature is not None:
             self._current_feature.scenarios.append(self._current_scenario)
         self.execution.total_scenarios += 1
+        # Scenarios may already be terminal when added (e.g. tagged as @skip).
+        if self._current_scenario.is_terminal:
+            self._update_scenario()
         self._current_step = None
 
     def add_step(self, step: BehaveStep) -> None:
@@ -70,6 +68,9 @@ class Collector:
         )
         if self._current_scenario is not None:
             self._current_scenario.steps.append(self._current_step)
+            # Skipped steps may already be terminal when added.
+            if self._current_step.is_terminal:
+                self._update_scenario()
 
     def set_running(self, match: Any) -> None:
         """Mark the current step as running when Behave emits a match."""
@@ -97,7 +98,7 @@ class Collector:
         self._update_scenario()
         self._update_feature()
 
-    def _find_step_for_result(self, result: BehaveStep) -> Optional[Step]:
+    def _find_step_for_result(self, result: BehaveStep | None) -> Optional[Step]:
         """Return the first non-terminal step in the current scenario."""
         if self._current_scenario is None:
             return None
@@ -132,15 +133,7 @@ class Collector:
 
 
 def _extract_error(result: BehaveStep) -> Error:
-    """Extract error information from a Behave step result.
-
-    Args:
-        result: Behave step result with ``error_message`` and optionally
-            ``exception``.
-
-    Returns:
-        Internal Error dataclass with type, message, and traceback.
-    """
+    """Extract error information from a Behave step result."""
     error_message = result.error_message or ""
     exception = getattr(result, "exception", None)
 
