@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import datetime
 
+from rich.text import Text
+
 from behave_modern_console_report.base import BaseFormatter
 from behave_modern_console_report.render import status_text
 from behave_modern_console_report.utils import format_duration
@@ -35,36 +37,45 @@ class LogFormatter(BaseFormatter):
             for scenario in feature.scenarios:
                 if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
                     self._printed_scenarios.add(id(scenario))
-                    scenario_line_text = (
-                        f"[{scenario.status.name.upper()}] Scenario "
-                        f"{status_text(scenario.status)}: {scenario.name} ({format_duration(scenario.duration)})"
+                    line = Text(f"[{_timestamp()}] ")
+                    line.append(
+                        f"[{scenario.status.name.upper()}]",
+                        style=self._status_style(scenario.status.name),
                     )
-                    scenario_line_text = self._colorize(scenario_line_text, scenario.status.name)
-                    self._console.print(f"[{_timestamp()}] {scenario_line_text}")
+                    line.append(
+                        f" Scenario {status_text(scenario.status)}: {scenario.name} "
+                        f"({format_duration(scenario.duration)})"
+                    )
+                    self._console.print(line)
                     if cfg.show_steps:
                         for step in scenario.steps:
                             if id(step) not in self._printed_steps:
                                 self._printed_steps.add(id(step))
-                                step_line_text = (
-                                    f"[{step.status.name.upper()}] Step "
-                                    f"{status_text(step.status)}: {step.keyword} {step.name} ({format_duration(step.duration)})"
+                                step_line = Text(f"[{_timestamp()}]   ")
+                                step_line.append(
+                                    f"[{step.status.name.upper()}]",
+                                    style=self._status_style(step.status.name),
                                 )
-                                step_line_text = self._colorize(step_line_text, step.status.name)
-                                self._console.print(f"[{_timestamp()}]   {step_line_text}")
+                                step_line.append(
+                                    f" Step {status_text(step.status)}: {step.keyword} {step.name} "
+                                    f"({format_duration(step.duration)})"
+                                )
+                                self._console.print(step_line)
                                 if step.is_failed and step.error and cfg.show_traceback:
-                                    self._console.print(
-                                        f"[{_timestamp()}]     [red]ERROR: {step.error.message}[/red]"
-                                    )
+                                    error_line = Text(f"[{_timestamp()}]     ")
+                                    error_line.append("ERROR:", style="red")
+                                    error_line.append(f" {step.error.message}")
+                                    self._console.print(error_line)
 
-    def _colorize(self, text: str, status: str) -> str:
+    def _status_style(self, status: str) -> str:
         status = status.lower()
         if status == "passed":
-            return f"[green]{text}[/green]"
+            return "green"
         if status == "skipped":
-            return f"[blue]{text}[/blue]"
+            return "blue"
         if status == "failed":
-            return f"[red]{text}[/red]"
-        return text
+            return "red"
+        return ""
 
     def on_close(self) -> None:
         execution = self._collector.execution
