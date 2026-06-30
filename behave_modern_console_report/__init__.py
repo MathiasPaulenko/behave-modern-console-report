@@ -11,7 +11,6 @@ from behave_modern_console_report.formatters.log import LogFormatter
 from behave_modern_console_report.formatters.minimal import MinimalFormatter
 from behave_modern_console_report.formatters.modern import ModernFormatter
 from behave_modern_console_report.formatters.modern_live import ModernLiveFormatter
-from behave_modern_console_report.formatters.modern_test import ModernTestFormatter
 from behave_modern_console_report.formatters.progress import ProgressFormatter
 
 __all__ = [
@@ -20,6 +19,5 @@ __all__ = [
     "MinimalFormatter",
     "ModernFormatter",
     "ModernLiveFormatter",
-    "ModernTestFormatter",
     "ProgressFormatter",
 ]
