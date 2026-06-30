@@ -18,10 +18,6 @@ class ProgressFormatter(BaseFormatter):
         super().__init__(stream, config)
         self._last_progress = 0.0
 
-    def _print(self, text: str) -> None:
-        self._stream.write(text + "\n")
-        self._stream.flush()
-
     def on_result(self) -> None:
         cfg = self.formatter_config
         # Throttle progress bar updates to once per 0.5 seconds to avoid spam.
@@ -33,16 +29,16 @@ class ProgressFormatter(BaseFormatter):
         for feature in self._collector.execution.features:
             for scenario in feature.scenarios:
                 if scenario.is_terminal:
-                    self._print(scenario_line(scenario, colors=cfg.colors))
+                    self._console.print(scenario_line(scenario))
         if cfg.show_progress:
-            self._print(progress_bar(self._collector.execution, colors=cfg.colors))
+            self._console.print(progress_bar(self._collector.execution))
 
     def on_close(self) -> None:
         cfg = self.formatter_config
         for feature in self._collector.execution.features:
             for scenario in feature.scenarios:
                 if scenario.is_terminal:
-                    self._print(scenario_line(scenario, colors=cfg.colors))
+                    self._console.print(scenario_line(scenario))
         if cfg.show_progress:
-            self._print(progress_bar(self._collector.execution, colors=cfg.colors))
-        self._print(summary_block(self._collector.execution, colors=cfg.colors))
+            self._console.print(progress_bar(self._collector.execution))
+        self._console.print(summary_block(self._collector.execution))

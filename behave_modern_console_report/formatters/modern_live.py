@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from rich.console import Console
 from rich.live import Live
+from rich.text import Text
 
 from behave_modern_console_report.formatters.modern import ModernFormatter
 from behave_modern_console_report.render import (
     failures_block,
+    feature_header,
     progress_bar,
+    scenario_line,
+    step_line,
     summary_block,
 )
 
@@ -21,39 +25,53 @@ class ModernLiveFormatter(ModernFormatter):
 
     def __init__(self, stream, config) -> None:
         super().__init__(stream, config)
-        self._console = Console(file=self._stream, color_system="auto" if self.formatter_config.colors else None)
-        self._live = Live(console=self._console, auto_refresh=True, refresh_per_second=2, screen=False)
+        self._console = Console(
+            file=self._stream,
+            color_system="auto" if self.formatter_config.colors else None,
+        )
+        self._live = Live(
+            console=self._console,
+            auto_refresh=True,
+            refresh_per_second=2,
+            screen=False,
+            vertical_overflow="visible",
+        )
         self._live.start(refresh=True)
 
-    def _print(self, text: str) -> None:
+    def _print(self, text: Text) -> None:
         """Live mode prints through the Live object instead of the stream."""
         pass  # All rendering is handled in _render_full
 
     def _print_header(self) -> None:
         pass
 
-    def _render_full(self, is_final: bool = False) -> str:
-        """Render the entire screen content."""
+    def _render_full(self, is_final: bool = False) -> Text:
+        """Render the entire screen content as a single Text object."""
         cfg = self.formatter_config
-        lines = ["🚀 Behave Modern Console Report", f"Running {self._collector.execution.total_scenarios} scenarios..."]
+        output = Text()
+        output.append("🚀 Behave Modern Console Report\n", style="bold")
+        output.append(f"Running {self._collector.execution.total_scenarios} scenarios...\n")
 
         for feature in self._collector.execution.features:
-            lines.append(f"\nFeature: {feature.name}")
+            output.append_text(feature_header(feature))
+            output.append("\n")
             for scenario in feature.scenarios:
-                from behave_modern_console_report.render import scenario_line, step_line
-                lines.append(scenario_line(scenario, colors=cfg.colors))
+                output.append_text(scenario_line(scenario))
+                output.append("\n")
                 if cfg.show_steps:
                     for step in scenario.steps:
-                        lines.append(step_line(step, colors=cfg.colors))
+                        output.append_text(step_line(step))
+                        output.append("\n")
 
         if cfg.show_progress:
-            lines.append(progress_bar(self._collector.execution, colors=cfg.colors))
-        lines.append(summary_block(self._collector.execution, colors=cfg.colors))
+            output.append_text(progress_bar(self._collector.execution))
+            output.append("\n")
+        output.append_text(summary_block(self._collector.execution))
         if is_final and cfg.show_traceback:
-            failures = failures_block(self._collector.execution, colors=cfg.colors)
+            failures = failures_block(self._collector.execution)
             if failures:
-                lines.append(failures)
-        return "\n".join(lines)
+                output.append_text(failures)
+        return output
 
     def on_result(self) -> None:
         """Refresh the live display."""

@@ -8,6 +8,7 @@ from behave.formatter.base import Formatter
 from behave.model import Feature as BehaveFeature
 from behave.model import Scenario as BehaveScenario
 from behave.model import Step as BehaveStep
+from rich.console import Console
 
 from behave_modern_console_report.collector import Collector
 from behave_modern_console_report.config import FormatterConfig
@@ -27,6 +28,11 @@ class BaseFormatter(Formatter):
         self.formatter_config = FormatterConfig(self.name, config)
         self._collector = Collector(self.formatter_config)
         self._closed = False
+        self._console = Console(
+            file=self._stream,
+            color_system="auto" if self.formatter_config.colors else None,
+            force_terminal=self.formatter_config.colors,
+        )
 
     def feature(self, feature: BehaveFeature) -> None:
         """Handle a Behave feature event."""

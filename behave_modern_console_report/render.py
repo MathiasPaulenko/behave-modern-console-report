@@ -1,6 +1,12 @@
-"""Shared rendering helpers for all formatters."""
+"""Shared rendering helpers using Rich text objects.
+
+Rich text objects let the Console render colors correctly on Windows through
+its legacy console API, avoiding the need for raw ANSI escape codes.
+"""
 
 from __future__ import annotations
+
+from rich.text import Text
 
 from behave_modern_console_report.models import Execution, Feature, Scenario, Status, Step
 from behave_modern_console_report.utils import format_duration
@@ -16,6 +22,16 @@ STATUS_ICON = {
     Status.UNTESTED: " ",
 }
 
+STATUS_STYLE = {
+    Status.PASSED: "green",
+    Status.FAILED: "red",
+    Status.SKIPPED: "yellow",
+    Status.UNDEFINED: "magenta",
+    Status.PENDING: "yellow",
+    Status.RUNNING: "dim",
+    Status.UNTESTED: "dim",
+}
+
 STATUS_TEXT = {
     Status.PASSED: "passed",
     Status.FAILED: "failed",
@@ -26,36 +42,10 @@ STATUS_TEXT = {
     Status.UNTESTED: "untested",
 }
 
-ANSI_COLOR = {
-    Status.PASSED: "\033[32m",      # green
-    Status.FAILED: "\033[31m",      # red
-    Status.SKIPPED: "\033[33m",     # yellow
-    Status.UNDEFINED: "\033[35m",    # magenta
-    Status.PENDING: "\033[33m",     # yellow
-    Status.RUNNING: "\033[90m",      # gray
-    Status.UNTESTED: "\033[90m",     # gray
-    "reset": "\033[0m",
-    "bold": "\033[1m",
-    "dim": "\033[2m",
-}
 
-
-def colored(text: str, color: str, enabled: bool = True) -> str:
-    """Wrap text in ANSI color codes if enabled."""
-    if not enabled:
-        return text
-    code = ANSI_COLOR.get(color, "")
-    return f"{code}{text}{ANSI_COLOR['reset']}"
-
-
-def icon(status: Status, enabled: bool = True) -> str:
-    """Return the status icon, optionally colored."""
-    return colored(STATUS_ICON.get(status, " "), status.name.lower(), enabled)
-
-
-def status_label(status: Status, enabled: bool = True) -> str:
-    """Return a colored status label."""
-    return colored(STATUS_TEXT.get(status, "?").upper(), status.name.lower(), enabled)
+def icon(status: Status) -> Text:
+    """Return the status icon as a styled Text object."""
+    return Text(STATUS_ICON.get(status, " "), style=STATUS_STYLE.get(status, "default"))
 
 
 def status_text(status: Status) -> str:
@@ -63,48 +53,62 @@ def status_text(status: Status) -> str:
     return STATUS_TEXT.get(status, "?")
 
 
-def scenario_line(scenario: Scenario, indent: int = 2, colors: bool = True) -> str:
-    """Return a single-line rendering of a scenario."""
-    prefix = " " * indent
-    duration = f"  ({format_duration(scenario.duration)})" if scenario.duration else ""
-    return f"{prefix}{icon(scenario.status, colors)} {scenario.name}{duration}"
+def status_label(status: Status) -> Text:
+    """Return a styled status label."""
+    return Text(STATUS_TEXT.get(status, "?").upper(), style=STATUS_STYLE.get(status, "default"))
 
 
-def step_line(step: Step, indent: int = 4, colors: bool = True) -> str:
-    """Return a single-line rendering of a step."""
-    prefix = " " * indent
-    duration = f"  ({format_duration(step.duration)})" if step.duration else ""
+def scenario_line(scenario: Scenario, indent: int = 2) -> Text:
+    """Return a styled Text line for a scenario."""
+    line = Text(" " * indent)
+    line.append_text(icon(scenario.status))
+    line.append(f" {scenario.name}")
+    if scenario.duration:
+        line.append(f"  ({format_duration(scenario.duration)})", style="dim")
+    return line
+
+
+def step_line(step: Step, indent: int = 4) -> Text:
+    """Return a styled Text line for a step."""
+    line = Text(" " * indent)
+    line.append_text(icon(step.status))
     keyword = f"{step.keyword} " if step.keyword else ""
-    return f"{prefix}{icon(step.status, colors)} {keyword}{step.name}{duration}"
+    line.append(f" {keyword}{step.name}")
+    if step.duration:
+        line.append(f"  ({format_duration(step.duration)})", style="dim")
+    return line
 
 
-def progress_bar(execution: Execution, width: int = 28, colors: bool = True) -> str:
-    """Return a text progress bar for the current execution."""
+def progress_bar(execution: Execution, width: int = 28) -> Text:
+    """Return a styled Text progress bar for the execution."""
     if execution.total_scenarios == 0:
-        return ""
+        return Text("")
     filled = int(width * execution.completion_rate)
-    bar = "█" * filled + "░" * (width - filled)
+    bar = Text("█" * filled + "░" * (width - filled), style="bold")
     percent = int(execution.completion_rate * 100)
-    return f"{colored(bar, 'bold', colors)}  {percent}%  {execution.completed_scenarios} / {execution.total_scenarios} scenarios"
+    bar.append(f"  {percent}%  {execution.completed_scenarios} / {execution.total_scenarios} scenarios")
+    return bar
 
 
-def summary_block(execution: Execution, colors: bool = True) -> str:
-    """Return a multi-line summary block."""
-    lines = [
-        "",
-        colored("RESULTS", "bold", colors),
-        "",
-        f"  {colored('Passed', 'passed', colors)}   {execution.passed_scenarios}",
-        f"  {colored('Failed', 'failed', colors)}   {execution.failed_scenarios}",
-        f"  {colored('Skipped', 'skipped', colors)}  {execution.skipped_scenarios}",
-        "",
-        f"  ⏱ Duration {format_duration(execution.duration)}",
-    ]
-    return "\n".join(lines)
+def summary_block(execution: Execution) -> Text:
+    """Return a styled Text summary block."""
+    lines = Text()
+    lines.append("\n")
+    lines.append("RESULTS\n", style="bold")
+    lines.append("\n")
+    lines.append_text(Text("  Passed   ", style="green"))
+    lines.append(f"{execution.passed_scenarios}\n")
+    lines.append_text(Text("  Failed   ", style="red"))
+    lines.append(f"{execution.failed_scenarios}\n")
+    lines.append_text(Text("  Skipped  ", style="yellow"))
+    lines.append(f"{execution.skipped_scenarios}\n")
+    lines.append("\n")
+    lines.append(f"  ⏱ Duration {format_duration(execution.duration)}\n")
+    return lines
 
 
-def failures_block(execution: Execution, colors: bool = True) -> str:
-    """Return a block with failure details."""
+def failures_block(execution: Execution) -> Text:
+    """Return a styled Text block with failure details."""
     failed = [
         (feature, scenario)
         for feature in execution.features
@@ -112,21 +116,26 @@ def failures_block(execution: Execution, colors: bool = True) -> str:
         if scenario.is_failed
     ]
     if not failed:
-        return ""
+        return Text("")
 
-    lines = ["", colored("Failures", "bold", colors)]
+    lines = Text()
+    lines.append("\n")
+    lines.append("Failures\n", style="bold")
     for feature, scenario in failed:
-        lines.append(f"\n{icon(Status.FAILED, colors)} {scenario.name}")
-        lines.append(f"  Feature: {feature.name} (line {scenario.line})")
+        lines.append("\n")
+        lines.append_text(icon(Status.FAILED))
+        lines.append(f" {scenario.name}\n")
+        lines.append(f"  Feature: {feature.name} (line {scenario.line})\n")
         for step in scenario.steps:
             if step.is_failed and step.error:
-                lines.append(f"  {step.error.type}")
-                lines.append(f"  {step.error.message}")
+                lines.append(f"  {step.error.type}\n")
+                lines.append(f"  {step.error.message}\n")
                 if step.error.traceback:
-                    lines.append(colored(step.error.traceback, "dim", colors))
-    return "\n".join(lines)
+                    lines.append_text(Text(step.error.traceback, style="dim"))
+                    lines.append("\n")
+    return lines
 
 
-def feature_header(feature: Feature, colors: bool = True) -> str:
-    """Return the feature header line."""
-    return f"\n{colored('Feature:', 'bold', colors)} {feature.name}"
+def feature_header(feature: Feature) -> Text:
+    """Return the styled feature header."""
+    return Text.assemble(("\nFeature: ", "bold"), (feature.name, ""))
