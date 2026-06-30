@@ -29,7 +29,7 @@ class ModernFormatter(BaseFormatter):
     def _print_header(self) -> None:
         header = Text.assemble(
             ("\n🚀 Behave Modern Console Report\n", "bold"),
-            (f"Running {self._collector.execution.total_scenarios} scenarios...\n", ""),
+            ("Running scenarios...\n", ""),
         )
         self._console.print(header)
 
@@ -54,10 +54,10 @@ class ModernFormatter(BaseFormatter):
                         for step in scenario.steps:
                             self._print(step_line(step))
                             if step.is_failed and step.error and cfg.show_traceback:
-                                self._console.print(Text(f"      {step.error.message}"))
+                                self._console.print(Text(f"      {step.error.message}", style="red"))
                                 if step.error.traceback:
                                     for tb_line in step.error.traceback.splitlines():
-                                        self._console.print(Text(f"      {tb_line}"))
+                                        self._console.print(Text(f"      {tb_line}", style="red"))
                     self._printed_scenarios.add(id(scenario))
 
     def on_close(self) -> None:
@@ -77,10 +77,10 @@ class ModernFormatter(BaseFormatter):
                         for step in scenario.steps:
                             self._print(step_line(step))
                             if step.is_failed and step.error and cfg.show_traceback:
-                                self._console.print(Text(f"      {step.error.message}"))
+                                self._console.print(Text(f"      {step.error.message}", style="red"))
                                 if step.error.traceback:
                                     for tb_line in step.error.traceback.splitlines():
-                                        self._console.print(Text(f"      {tb_line}"))
+                                        self._console.print(Text(f"      {tb_line}", style="red"))
                     self._printed_scenarios.add(id(scenario))
         self._console.print(summary_block(self._collector.execution))
         if cfg.show_traceback:
