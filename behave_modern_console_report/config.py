@@ -26,7 +26,7 @@ class FormatterConfig:
         self.colors = self._bool("colors", True)
         self.show_steps = self._bool("show_steps", True)
         self.show_traceback = self._bool("show_traceback", True)
-        self.show_progress = self._bool("show_progress", True)
+        self.show_progress = self._bool_formatter_specific("show_progress", True)
 
     def _get(self, key: str, default: Any | None) -> Any | None:
         """Return formatter-specific value, falling back to global ``mcr.*``."""
@@ -35,8 +35,21 @@ class FormatterConfig:
             value = self._user_data.get(f"mcr.{key}")
         return value if value is not None else default
 
+    def _get_formatter_specific(self, key: str, default: Any | None) -> Any | None:
+        """Return only the formatter-specific value, no global fallback."""
+        value = self._user_data.get(f"mcr.{self.formatter_name}.{key}")
+        return value if value is not None else default
+
     def _bool(self, key: str, default: bool) -> bool:
         value = self._get(key, None)
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        return str(value).lower() in {"true", "1", "yes", "on"}
+
+    def _bool_formatter_specific(self, key: str, default: bool) -> bool:
+        value = self._get_formatter_specific(key, None)
         if value is None:
             return default
         if isinstance(value, bool):
