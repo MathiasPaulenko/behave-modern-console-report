@@ -17,6 +17,7 @@ class ProgressFormatter(BaseFormatter):
     def __init__(self, stream, config) -> None:
         super().__init__(stream, config)
         self._last_progress = 0.0
+        self._printed_scenarios: set[int] = set()
 
     def on_result(self) -> None:
         cfg = self.formatter_config
@@ -28,7 +29,8 @@ class ProgressFormatter(BaseFormatter):
 
         for feature in self._collector.execution.features:
             for scenario in feature.scenarios:
-                if scenario.is_terminal:
+                if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
+                    self._printed_scenarios.add(id(scenario))
                     self._console.print(scenario_line(scenario))
         if cfg.show_progress:
             self._console.print(progress_bar(self._collector.execution))
@@ -37,7 +39,8 @@ class ProgressFormatter(BaseFormatter):
         cfg = self.formatter_config
         for feature in self._collector.execution.features:
             for scenario in feature.scenarios:
-                if scenario.is_terminal:
+                if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
+                    self._printed_scenarios.add(id(scenario))
                     self._console.print(scenario_line(scenario))
         if cfg.show_progress:
             self._console.print(progress_bar(self._collector.execution))
