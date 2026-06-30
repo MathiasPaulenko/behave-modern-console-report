@@ -35,20 +35,28 @@ class LogFormatter(BaseFormatter):
             for scenario in feature.scenarios:
                 if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
                     self._printed_scenarios.add(id(scenario))
-                    self._console.print(
-                        f"[{_timestamp()}] [{scenario.status.name.upper()}] Scenario "
+                    scenario_line_text = (
+                        f"[{scenario.status.name.upper()}] Scenario "
                         f"{status_text(scenario.status)}: {scenario.name} ({format_duration(scenario.duration)})"
                     )
+                    if scenario.is_failed:
+                        scenario_line_text = f"[red]{scenario_line_text}[/red]"
+                    self._console.print(f"[{_timestamp()}] {scenario_line_text}")
                     if cfg.show_steps:
                         for step in scenario.steps:
                             if id(step) not in self._printed_steps:
                                 self._printed_steps.add(id(step))
-                                self._console.print(
-                                    f"[{_timestamp()}]   [{step.status.name.upper()}] Step "
+                                step_line_text = (
+                                    f"[{step.status.name.upper()}] Step "
                                     f"{status_text(step.status)}: {step.keyword} {step.name} ({format_duration(step.duration)})"
                                 )
+                                if step.is_failed:
+                                    step_line_text = f"[red]{step_line_text}[/red]"
+                                self._console.print(f"[{_timestamp()}]   {step_line_text}")
                                 if step.is_failed and step.error and cfg.show_traceback:
-                                    self._console.print(f"[{_timestamp()}]     ERROR: {step.error.message}")
+                                    self._console.print(
+                                        f"[{_timestamp()}]     [red]ERROR: {step.error.message}[/red]"
+                                    )
 
     def on_close(self) -> None:
         execution = self._collector.execution
