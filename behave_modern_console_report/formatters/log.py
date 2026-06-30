@@ -39,8 +39,7 @@ class LogFormatter(BaseFormatter):
                         f"[{scenario.status.name.upper()}] Scenario "
                         f"{status_text(scenario.status)}: {scenario.name} ({format_duration(scenario.duration)})"
                     )
-                    if scenario.is_failed:
-                        scenario_line_text = f"[red]{scenario_line_text}[/red]"
+                    scenario_line_text = self._colorize(scenario_line_text, scenario.status.name)
                     self._console.print(f"[{_timestamp()}] {scenario_line_text}")
                     if cfg.show_steps:
                         for step in scenario.steps:
@@ -50,13 +49,21 @@ class LogFormatter(BaseFormatter):
                                     f"[{step.status.name.upper()}] Step "
                                     f"{status_text(step.status)}: {step.keyword} {step.name} ({format_duration(step.duration)})"
                                 )
-                                if step.is_failed:
-                                    step_line_text = f"[red]{step_line_text}[/red]"
+                                step_line_text = self._colorize(step_line_text, step.status.name)
                                 self._console.print(f"[{_timestamp()}]   {step_line_text}")
                                 if step.is_failed and step.error and cfg.show_traceback:
                                     self._console.print(
                                         f"[{_timestamp()}]     [red]ERROR: {step.error.message}[/red]"
                                     )
+
+    def _colorize(self, text: str, status: str) -> str:
+        if status == "passed":
+            return f"[green]{text}[/green]"
+        if status == "skipped":
+            return f"[blue]{text}[/blue]"
+        if status == "failed":
+            return f"[red]{text}[/red]"
+        return text
 
     def on_close(self) -> None:
         execution = self._collector.execution
