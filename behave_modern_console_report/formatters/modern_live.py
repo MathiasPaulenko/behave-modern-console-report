@@ -42,11 +42,14 @@ class ModernLiveFormatter(BaseFormatter):
         lines.append("Running scenarios...\n")
         for feature in self._collector.execution.features:
             lines.append_text(feature_header(feature))
+            lines.append("\n")
             for scenario in feature.scenarios:
                 lines.append_text(scenario_line(scenario))
+                lines.append("\n")
                 if cfg.show_steps:
                     for step in scenario.steps:
                         lines.append_text(step_line(step))
+                        lines.append("\n")
                         if step.is_failed and step.error and cfg.show_traceback:
                             lines.append(f"      {step.error.message}\n", style="red")
                             if step.error.traceback:
@@ -55,6 +58,7 @@ class ModernLiveFormatter(BaseFormatter):
         if cfg.show_progress or is_final:
             lines.append(Text(""))
             lines.append_text(progress_bar(self._collector.execution))
+            lines.append("\n")
         if is_final:
             lines.append_text(summary_block(self._collector.execution))
             if cfg.show_traceback:
