@@ -64,13 +64,15 @@ class ModernLiveFormatter(ModernFormatter):
                         output.append("\n")
 
         if cfg.show_progress:
+            output.append("\n")
             output.append_text(progress_bar(self._collector.execution))
             output.append("\n")
-        output.append_text(summary_block(self._collector.execution))
-        if is_final and cfg.show_traceback:
-            failures = failures_block(self._collector.execution)
-            if failures:
-                output.append_text(failures)
+        if is_final:
+            output.append_text(summary_block(self._collector.execution))
+            if cfg.show_traceback:
+                failures = failures_block(self._collector.execution)
+                if failures:
+                    output.append_text(failures)
         return output
 
     def on_result(self) -> None:

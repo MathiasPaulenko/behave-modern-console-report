@@ -84,6 +84,7 @@ class ModernFormatter(BaseFormatter):
                                         self._console.print(Text(f"      {tb_line}"))
                     self._printed_scenarios.add(id(scenario))
         if cfg.show_progress:
+            self._console.print(Text(""))
             self._console.print(progress_bar(self._collector.execution))
         self._console.print(summary_block(self._collector.execution))
         if cfg.show_traceback:
