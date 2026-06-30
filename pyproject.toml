@@ -40,6 +40,7 @@ dependencies = [
     "behave>=1.2.6",
     "rich>=13.0.0",
     "tqdm>=4.60.0",
+    "colorama>=0.4.6",
 ]
 
 [project.optional-dependencies]

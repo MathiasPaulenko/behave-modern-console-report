@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import colorama
 from tqdm import tqdm
 
 from behave_modern_console_report.base import BaseFormatter
@@ -32,6 +33,7 @@ class ModernLiveFormatter(BaseFormatter):
         self._printed_features: set[int] = set()
         self._printed_scenarios: set[int] = set()
         self._pbar: tqdm | None = None
+        colorama.init()
 
     def _scenario_icon(self, status: str) -> str:
         return _STATUS_ICON.get(status.lower(), " ")
@@ -79,6 +81,7 @@ class ModernLiveFormatter(BaseFormatter):
         self._print_scenarios()
         if self._pbar.total != execution.total_scenarios:
             self._pbar.total = execution.total_scenarios
+            self._pbar.refresh()
         completed = execution.completed_scenarios
         if self._pbar.n < completed:
             self._pbar.update(completed - self._pbar.n)
@@ -90,10 +93,13 @@ class ModernLiveFormatter(BaseFormatter):
         if self._pbar is not None:
             if self._pbar.total != execution.total_scenarios:
                 self._pbar.total = execution.total_scenarios
+                self._pbar.refresh()
             completed = execution.completed_scenarios
             if self._pbar.n < completed:
                 self._pbar.update(completed - self._pbar.n)
             self._pbar.close()
+
+        colorama.deinit()
 
         tqdm.write("", file=self._stream)
         tqdm.write("RESULTS", file=self._stream)
