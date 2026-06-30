@@ -15,35 +15,40 @@ def _timestamp() -> str:
 
 
 class LogFormatter(BaseFormatter):
-    """Formatter that prints every event as a timestamped log line."""
+    """Formatter that prints every completed event as a timestamped log line."""
 
     name = "log"
-    description = "Timestamped log output for every feature/scenario/step"
+    description = "Timestamped log output for every completed feature/scenario/step"
+
+    def __init__(self, stream, config) -> None:
+        super().__init__(stream, config)
+        self._printed_scenarios: set[int] = set()
+        self._printed_steps: set[int] = set()
 
     def feature(self, feature) -> None:
         super().feature(feature)
-        cfg = self.formatter_config
-        icon = "✓" if feature.status.name in {"passed", "skipped"} else "✗"
-        self._console.print(f"[{_timestamp()}] {icon} Feature: {feature.name}")
+        self._console.print(f"[{_timestamp()}] Feature: {feature.name}")
 
     def on_result(self) -> None:
         cfg = self.formatter_config
-        execution = self._collector.execution
-        for feature in execution.features:
+        for feature in self._collector.execution.features:
             for scenario in feature.scenarios:
-                if scenario.is_terminal:
+                if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
+                    self._printed_scenarios.add(id(scenario))
                     self._console.print(
                         f"[{_timestamp()}] [{scenario.status.name.upper()}] Scenario "
                         f"{status_text(scenario.status)}: {scenario.name} ({format_duration(scenario.duration)})"
                     )
                     if cfg.show_steps:
                         for step in scenario.steps:
-                            self._console.print(
-                                f"[{_timestamp()}]   [{step.status.name.upper()}] Step "
-                                f"{status_text(step.status)}: {step.keyword} {step.name} ({format_duration(step.duration)})"
-                            )
-                            if step.is_failed and step.error and cfg.show_traceback:
-                                self._console.print(f"[{_timestamp()}]     ERROR: {step.error.message}")
+                            if id(step) not in self._printed_steps:
+                                self._printed_steps.add(id(step))
+                                self._console.print(
+                                    f"[{_timestamp()}]   [{step.status.name.upper()}] Step "
+                                    f"{status_text(step.status)}: {step.keyword} {step.name} ({format_duration(step.duration)})"
+                                )
+                                if step.is_failed and step.error and cfg.show_traceback:
+                                    self._console.print(f"[{_timestamp()}]     ERROR: {step.error.message}")
 
     def on_close(self) -> None:
         execution = self._collector.execution
