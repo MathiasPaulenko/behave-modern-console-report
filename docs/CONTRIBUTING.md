@@ -22,7 +22,7 @@ pytest
 To run a specific test file:
 
 ```bash
-pytest tests/test_renderer.py
+pytest tests/test_models.py
 ```
 
 ## Linting and Formatting
@@ -43,8 +43,8 @@ mypy behave_modern_console_report
 - Use Python 3.11+ type hints.
 - Prefer dataclasses for data models.
 - Write Google-style docstrings.
-- Keep the formatter thin and place business logic in the Collector and
-  Renderer.
+- Keep formatters thin and place business logic in the Collector and
+  Render layers.
 - Add tests for new behavior.
 
 ## Submitting Changes

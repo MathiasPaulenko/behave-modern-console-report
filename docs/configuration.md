@@ -1,60 +1,38 @@
-# Configuration Reference
+# Configuration
 
-Configuration can be provided via Behave user data (`-D key=value`) or
-environment variables. User data takes precedence over environment variables.
+Configuration is provided via Behave user data (`-D key=value`) or the `[behave.userdata]` section in `behave.ini`.
 
 ## Options
 
-| Option | Environment Variable | Default | Description |
-| --- | --- | --- | --- |
-| `modern_console_theme` | `MODERN_CONSOLE_THEME` | `default` | Output theme. Available: `default`, `dark`, `light`, `minimal`, `monochrome`. |
-| `modern_console_verbosity` | `MODERN_CONSOLE_VERBOSITY` | `normal` | Output verbosity. Available: `minimal`, `normal`, `verbose`, `debug`. |
-| `modern_console_colors` | `MODERN_CONSOLE_COLORS` | `auto` | `auto`, `true`, or `false`. In CI, `auto` defaults to `false`. |
-| `modern_console_compact` | `MODERN_CONSOLE_COMPACT` | `false` | Show only the most recent scenarios in the live list. |
-| `modern_console_show_steps` | `MODERN_CONSOLE_SHOW_STEPS` | `auto` | `auto` enables step output for `verbose` and `debug`. |
-| `modern_console_show_durations` | `MODERN_CONSOLE_SHOW_DURATIONS` | `true` | Show scenario and step durations. |
-| `modern_console_show_progress` | `MODERN_CONSOLE_SHOW_PROGRESS` | `true` | Show the progress bar. |
-| `modern_console_show_environment` | `MODERN_CONSOLE_SHOW_ENVIRONMENT` | `false` | Show environment information. |
-| `modern_console_show_traceback` | `MODERN_CONSOLE_SHOW_TRACEBACK` | `true` | Show full tracebacks for failed steps. |
+| Option | Default | Description |
+| --- | --- | --- |
+| `mcr.colors` | `true` | Enable/disable colored output. |
+| `mcr.show_steps` | `true` | Show step-level details. |
+| `mcr.show_traceback` | `true` | Show tracebacks for failed steps. |
+| `mcr.<formatter>.show_progress` | `true` | Show progress bar (formatter-specific, no global fallback). |
 
-## CI Detection
+## Per-formatter overrides
 
-The formatter detects common CI environments by checking these environment
-variables:
+Each formatter reads its own `mcr.<formatter>.<key>` namespace. When a formatter-specific key is missing, the global `mcr.<key>` is used as a fallback.
 
-- `CI`
-- `GITHUB_ACTIONS`
-- `GITLAB_CI`
-- `CIRCLECI`
-- `TRAVIS`
-- `JENKINS_URL`
-- `BUILDKITE`
-- `DRONE`
-- `TF_BUILD`
-- `APPVEYOR`
-- `AZURE_DEVOPS`
-
-When a CI environment is detected, animations are disabled, output is
-simplified, and colors default to off unless explicitly enabled.
+The `show_progress` option is formatter-specific only (no global fallback).
 
 ## Examples
 
-Run with the dark theme and verbose output:
+Disable colors globally:
 
 ```bash
-behave --format=modern -D modern_console_theme=dark -D modern_console_verbosity=verbose
+behave --format=modern -D mcr.colors=false
 ```
 
-Disable colors and progress for a CI log:
+Override `show_steps` for a specific formatter:
 
 ```bash
-behave --format=modern -D modern_console_colors=false -D modern_console_show_progress=false
+behave --format=ci -D mcr.ci.show_steps=false -D mcr.show_steps=true
 ```
 
-Set options via environment variables:
+Hide progress bar for the CI formatter:
 
 ```bash
-export MODERN_CONSOLE_THEME=minimal
-export MODERN_CONSOLE_VERBOSITY=verbose
-behave --format=modern
+behave --format=ci -D mcr.ci.show_progress=false
 ```

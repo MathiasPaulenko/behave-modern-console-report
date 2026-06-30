@@ -53,11 +53,6 @@ def status_text(status: Status) -> str:
     return STATUS_TEXT.get(status, "?")
 
 
-def status_label(status: Status) -> Text:
-    """Return a styled status label."""
-    return Text(STATUS_TEXT.get(status, "?").upper(), style=STATUS_STYLE.get(status, "default"))
-
-
 def scenario_line(scenario: Scenario, indent: int = 2) -> Text:
     """Return a styled Text line for a scenario."""
     line = Text(" " * indent)

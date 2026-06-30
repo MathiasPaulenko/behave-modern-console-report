@@ -1,27 +1,20 @@
 # Architecture
 
-`behave-modern-console-report` follows a clean layered architecture so that
-each responsibility is isolated and the project can be extended without
-coupling to Behave internals.
+`behave-modern-console-report` follows a layered architecture so that each responsibility is isolated and the project can be extended without coupling to Behave internals.
 
 ## Layers
 
 ```text
-Behave → Formatter → Collector → Models → Renderer → Console
+Behave → BaseFormatter → Collector → Models → Render → Console
 ```
 
-### Formatter (`formatter.py`)
+### BaseFormatter (`base.py`)
 
-The only layer that implements the Behave `Formatter` API. It forwards events
-such as `feature`, `scenario`, `step`, `match`, and `result` to the Collector.
-It also decides whether to render output inside a Rich `Live` view or as
-log-friendly incremental lines for CI environments.
+Implements the Behave `Formatter` API. It forwards events (`feature`, `scenario`, `step`, `match`, `result`) to the Collector and provides `on_result`/`on_close` hooks for subclasses.
 
 ### Collector (`collector.py`)
 
-Translates Behave model objects into internal dataclasses. It maintains the
-current feature, scenario, and step so that partial results can be rendered in
-real time. It also updates aggregate counters and captures error information.
+Translates Behave model objects into internal dataclasses. It maintains the current feature, scenario, and step so that partial results can be rendered in real time. It also updates aggregate counters and captures error information.
 
 ### Models (`models.py`)
 
@@ -32,48 +25,28 @@ Pure dataclasses representing the execution state:
 - `Scenario`
 - `Step`
 - `Error`
-- `Environment`
 
-These classes are independent of Behave and are used by the Renderer.
+These classes are independent of Behave and can be tested without running Behave.
 
-### Renderer (`renderer.py`)
+### Render (`render.py`)
 
-Converts the execution model into Rich renderables. It produces:
+Converts the execution model into Rich `Text` objects. It produces scenario lines, step lines, progress bars, summary blocks, and failure diagnostics.
 
-- Header with scenario count
-- Progress bar with ETA
-- Scenario list
-- Results summary
-- Failure diagnostics
+### Formatters (`formatters/`)
 
-The Renderer is independent of Behave and can be tested with fake models.
+Each formatter renders the model differently:
 
-### Console (`console.py`)
-
-Wraps a Rich `Console` configured according to the formatter settings. This
-layer abstracts the terminal stream and color settings.
+- `modern` — Playwright-like report with feature grouping.
+- `modern-live` — Live-updating report using Rich `Live`.
+- `progress` — Single-line live progress bar.
+- `log` — Timestamped log output.
+- `ci` — CI-friendly output with colored status tags.
+- `minimal` — Plain text with only scenarios and summary.
 
 ### Configuration (`config.py`)
 
-Resolves settings from Behave user data and environment variables. It also
-detects CI environments and adjusts defaults for log-friendly output.
-
-### Themes (`themes.py`) and supporting modules
-
-Themes define semantic styles. `colors.py`, `icons.py`, `progress.py`, and
-`statistics.py` provide small, focused helpers used by the Renderer.
+Resolves settings from Behave user data. Each formatter reads `mcr.<formatter>.<key>` with fallback to global `mcr.<key>` keys. The `show_progress` option is formatter-specific (no global fallback).
 
 ## Extensibility
 
-The architecture is designed to support future features such as:
-
-- Interactive TUI mode: replace the Renderer with a Textual-based UI.
-- Split panel live view: extend the Renderer with panel layouts.
-- Parallel execution visualization: update the Collector to track parallel
-  workers and the Renderer to display them.
-- Historical comparisons: add a new layer that compares current execution
-  models with stored reports.
-- Export formats: add exporters that consume the same `Execution` model and
-  write JSON, Markdown, or HTML without touching Behave or rendering logic.
-- Plugin system: expose hooks in the Collector and Renderer so that third-party
-  plugins can transform output.
+The architecture supports adding new formatters by subclassing `BaseFormatter` and implementing `on_result` and `on_close`. The Collector, Models, and Render layers are shared across all formatters.

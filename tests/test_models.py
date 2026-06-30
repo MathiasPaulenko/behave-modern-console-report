@@ -75,11 +75,6 @@ def test_execution_duration() -> None:
     assert execution.duration == 5.0
 
 
-def test_execution_pass_rate() -> None:
-    execution = Execution(total_scenarios=4, passed_scenarios=3)
-    assert execution.pass_rate == 0.75
-
-
 def test_error_summary() -> None:
     error = Error(type="AssertionError", message="Expected 200\nActual 500")
     assert error.summary == "AssertionError: Expected 200"

@@ -78,7 +78,6 @@ class Collector:
         if target is not None:
             self._current_step = target
             self._current_step.status = Status.RUNNING
-            self._current_step.started_at = now()
         if self._current_scenario is not None:
             self._current_scenario.status = Status.RUNNING
 
@@ -91,7 +90,6 @@ class Collector:
         self._current_step = target
         self._current_step.status = Status.from_behave(result.status)
         self._current_step.duration = getattr(result, "duration", 0.0) or 0.0
-        self._current_step.finished_at = now()
         if result.error_message:
             self._current_step.error = _extract_error(result)
 

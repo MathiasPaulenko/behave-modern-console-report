@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 
 def format_duration(seconds: float) -> str:
@@ -30,23 +29,6 @@ def format_duration(seconds: float) -> str:
     hours = minutes // 60
     remaining_minutes = minutes % 60
     return f"{hours}h{remaining_minutes:02d}m{remaining_seconds:02d}s"
-
-
-def estimate_remaining(elapsed: float, completed: int, total: int) -> Optional[float]:
-    """Estimate remaining seconds based on elapsed time and progress.
-
-    Args:
-        elapsed: Elapsed seconds so far.
-        completed: Number of completed items.
-        total: Total number of items.
-
-    Returns:
-        Estimated remaining seconds, or None if no estimate can be made.
-    """
-    if completed <= 0 or total <= 0 or completed >= total:
-        return None
-    rate = elapsed / completed
-    return rate * (total - completed)
 
 
 def now() -> float:

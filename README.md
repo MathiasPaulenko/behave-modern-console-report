@@ -1,22 +1,21 @@
 # behave-modern-console-report
 
-A modern, real-time console report formatter for [Behave](https://behave.readthedocs.io/) that provides rich terminal output with colors, progress indicators, execution summaries, timings, and developer-friendly diagnostics for local development and CI/CD pipelines.
+A modern console report formatter for [Behave](https://behave.readthedocs.io/) that provides rich terminal output with colors, progress indicators, execution summaries, timings, and failure diagnostics.
 
-Inspired by modern developer tools such as Playwright CLI, pytest, Cargo, and GitHub CLI.
+Inspired by modern developer tools such as Playwright CLI, pytest, and Cargo.
 
 ---
 
-## Features
+## Formatters
 
-- **Real-time output**: Live scenario status updates as tests execute.
-- **Beautiful progress bar**: Current scenario, percentage completed, and estimated remaining time.
-- **Clear pass/fail feedback**: Unicode icons and color-coded results.
-- **Failure diagnostics**: Scenario name, error type, short message, and optional traceback.
-- **Verbosity levels**: minimal, normal, verbose, and debug.
-- **Multiple themes**: default, dark, light, minimal, and monochrome.
-- **CI/CD friendly**: Automatically detects CI environments and disables animations.
-- **Lightweight and fast**: Handles thousands of scenarios and steps efficiently.
-- **Extensible architecture**: Designed for future TUI, plugins, and export formats.
+| Formatter | Description |
+| --- | --- |
+| `modern` | Playwright-like report with feature grouping, scenario/step lines, and end-of-run summary. |
+| `modern-live` | Live-updating version of `modern` using Rich Live for real-time status colors. |
+| `progress` | Single-line live progress bar that updates in place. |
+| `log` | Timestamped log output for every completed scenario and step. |
+| `ci` | CI-friendly output with colored status tags and end-of-run failure summary. |
+| `minimal` | Plain text output with only scenario names and a final summary. |
 
 ---
 
@@ -44,142 +43,88 @@ Register the formatter with Behave using the `--format` or `-f` option:
 behave --format=modern
 ```
 
-Specify verbosity with Behave user data:
+Or set it in `behave.ini`:
 
-```bash
-behave --format=modern -D mcr.verbosity=verbose
+```ini
+[behave]
+default_format=modern
 ```
 
-Choose a theme:
-
-```bash
-behave --format=modern -D mcr.theme=dark
-```
-
-Disable colors (useful for CI):
+Disable colors:
 
 ```bash
 behave --format=modern -D mcr.colors=false
 ```
 
-Run in compact mode:
+Hide step details:
 
 ```bash
-behave --format=modern -D mcr.compact=true
+behave --format=modern -D mcr.show_steps=false
 ```
+
+---
+
+## Configuration
+
+Options are read from Behave user data (`-D key=value`) or `behave.ini` `[behave.userdata]` section.
+
+Each formatter reads its own `mcr.<formatter>.<key>` namespace with fallback to global `mcr.<key>` keys. The `show_progress` option is formatter-specific (no global fallback).
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `mcr.colors` | `true` | Enable/disable colored output. |
+| `mcr.show_steps` | `true` | Show step-level details. |
+| `mcr.show_traceback` | `true` | Show tracebacks for failed steps. |
+| `mcr.<formatter>.show_progress` | `true` | Show progress bar (formatter-specific, no global fallback). |
 
 ---
 
 ## Example Output
 
 ```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 🚀 Behave Modern Console Report
 
-Running 128 scenarios...
+Feature: Authentication
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✓ Login
-✓ Register
-✗ Checkout
-✓ Search
-⏭ Payments
-
-███████████████░░░░░░░░  72%
-106 / 148 scenarios
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✓ Login  (602ms)
+  ✗ Locked account shows error  (604ms)
+  ⏭ Login with social provider  (0ms)
 
 RESULTS
 
-Passed   148
-Failed   2
-Skipped  4
+  Passed   18
+  Failed   1
+  Skipped  1
 
-Duration 3m42s
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⏱ Duration 9.1s
 ```
-
-Failed scenarios are shown with concise diagnostics:
-
-```text
-✗ Checkout scenario
-
-AssertionError:
-Expected 200
-Actual 500
-```
-
----
-
-## Configuration Reference
-
-Options are read from Behave user data (`-D key=value`) or environment variables.
-
-| Option | Environment Variable | Default | Description |
-| --- | --- | --- | --- |
-| `mcr.theme` | `MCR_THEME` | `default` | Output theme. |
-| `mcr.verbosity` | `MCR_VERBOSITY` | `normal` | Output verbosity. |
-| `mcr.colors` | `MCR_COLORS` | `auto` | Enable/disable colors. |
-| `mcr.compact` | `MCR_COMPACT` | `false` | Compact output mode. |
-| `mcr.show_steps` | `MCR_SHOW_STEPS` | `auto` | Show step-level details. |
-| `mcr.show_durations` | `MCR_SHOW_DURATIONS` | `true` | Show scenario durations. |
-| `mcr.show_progress` | `MCR_SHOW_PROGRESS` | `true` | Show progress bar. |
-| `mcr.show_traceback` | `MCR_SHOW_TRACEBACK` | `true` | Show tracebacks on failure. |
-| `mcr.live` | `MCR_LIVE` | `auto` | Force live/interactive mode. |
-
-The legacy `modern_console_*` keys are still supported for backwards compatibility.
 
 ---
 
 ## Architecture
 
 ```text
-Behave → Formatter → Collector → Model → Renderer → Console Output
+Behave → BaseFormatter → Collector → Models → Render → Console
 ```
 
-- **Formatter**: Thin entry point that receives Behave events.
-- **Collector**: Builds an internal execution model from events.
-- **Models**: Dataclasses representing execution, features, scenarios, steps, and errors.
-- **Renderer**: Converts the model into terminal output independently of Behave.
-- **Console**: Manages the terminal output stream, including live updates.
-
-This layered design makes it easy to extend the formatter with new output modes, themes, or export formats in the future.
+- **BaseFormatter**: Receives Behave events and forwards them to the Collector.
+- **Collector**: Builds an internal execution model from Behave events.
+- **Models**: Dataclasses for Execution, Feature, Scenario, Step, and Error.
+- **Render**: Converts the model into Rich Text objects for terminal output.
+- **Formatters**: Each formatter renders the model differently (live, log, CI, etc.).
 
 ---
 
 ## Development
 
-Run the test suite:
-
 ```bash
 pytest
-```
-
-Run linting:
-
-```bash
 ruff check .
-ruff format .
-```
-
-Run type checking:
-
-```bash
 mypy behave_modern_console_report
 ```
 
 ---
 
-## Contributing
-
-Contributions are welcome. Please open an issue or pull request on GitHub. For major changes, please discuss them in an issue first.
-
----
-
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+MIT

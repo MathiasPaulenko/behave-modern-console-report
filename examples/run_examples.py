@@ -1,4 +1,4 @@
-"""Helper script to run the Behave examples with the modern formatter."""
+"""Helper script to run the Behave examples."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def main() -> int:
-    """Run behave from the examples directory using the modern formatter."""
+    """Run behave from the examples directory."""
     examples_dir = Path(__file__).parent.resolve()
 
     cmd = [sys.executable, "-m", "behave"]

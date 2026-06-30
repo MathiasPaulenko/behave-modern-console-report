@@ -70,8 +70,6 @@ class Step:
     keyword: str = ""
     status: Status = Status.UNTESTED
     duration: float = 0.0
-    started_at: Optional[float] = None
-    finished_at: Optional[float] = None
     error: Optional[Error] = None
     line: int = 0
 
@@ -118,11 +116,6 @@ class Scenario:
             Status.UNDEFINED,
             Status.PENDING,
         }
-
-    @property
-    def is_running(self) -> bool:
-        """Return True if any step is currently running."""
-        return any(step.status == Status.RUNNING for step in self.steps)
 
     def update_status(self) -> None:
         """Derive the scenario status from its steps."""
@@ -178,16 +171,6 @@ class Feature:
 
 
 @dataclass
-class Environment:
-    """Optional environment information captured at runtime."""
-
-    python_version: str = ""
-    platform: str = ""
-    behave_version: str = ""
-    user_data: dict[str, str] = field(default_factory=dict)
-
-
-@dataclass
 class Execution:
     """Root aggregate for a single Behave execution."""
 
@@ -199,10 +182,6 @@ class Execution:
     passed_scenarios: int = 0
     failed_scenarios: int = 0
     skipped_scenarios: int = 0
-    undefined_scenarios: int = 0
-    pending_scenarios: int = 0
-    environment: Environment = field(default_factory=Environment)
-    errors: list[tuple[str, Error]] = field(default_factory=list)
 
     def add_scenario_result(self, status: Status) -> None:
         """Update aggregate counters when a scenario finishes."""
@@ -213,10 +192,6 @@ class Execution:
             self.failed_scenarios += 1
         elif status == Status.SKIPPED:
             self.skipped_scenarios += 1
-        elif status == Status.UNDEFINED:
-            self.undefined_scenarios += 1
-        elif status == Status.PENDING:
-            self.pending_scenarios += 1
 
     @property
     def duration(self) -> float:
@@ -225,13 +200,6 @@ class Execution:
             return 0.0
         end = self.end_time if self.end_time is not None else self.start_time
         return end - self.start_time
-
-    @property
-    def pass_rate(self) -> float:
-        """Return the pass rate as a fraction between 0 and 1."""
-        if self.total_scenarios == 0:
-            return 0.0
-        return self.passed_scenarios / self.total_scenarios
 
     @property
     def completion_rate(self) -> float:

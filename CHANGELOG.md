@@ -9,14 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of `behave-modern-console-report`.
-- Real-time terminal formatter for Behave using the Rich library.
-- Layered architecture: formatter, collector, models, renderer, and console.
-- Support for verbosity levels: minimal, normal, verbose, and debug.
-- Built-in themes: default, dark, light, minimal, and monochrome.
-- Automatic CI/CD detection with non-animated, log-friendly output.
-- Progress bar, live scenario status, and end-of-run summary.
-- Failure diagnostics with scenario name, error type, and message.
-- Configuration via Behave user data and environment variables.
-- Comprehensive unit tests, integration tests, and golden snapshot tests.
-- GitHub Actions workflows for lint, tests, coverage, and packaging.
+- Six formatters: `modern`, `modern-live`, `progress`, `log`, `ci`, and `minimal`.
+- Layered architecture: base formatter, collector, models, render helpers.
+- Per-formatter configuration via `mcr.<formatter>.<key>` with global `mcr.<key>` fallback.
+- Colored status icons, progress bars, and execution summaries.
+- Failure diagnostics with error type, message, and optional traceback.
+- Configuration via Behave user data (`-D key=value`) or `behave.ini`.
+- Unit tests for models, collector, config, utils, and formatter output.
 - MIT license and PyPI-ready packaging.
