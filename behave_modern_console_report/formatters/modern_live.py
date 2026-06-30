@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import colorama
+from colorama import Fore, Style
 from tqdm import tqdm
 
 from behave_modern_console_report.base import BaseFormatter
@@ -19,6 +20,16 @@ _STATUS_ICON = {
     "pending": "P",
     "running": "◌",
     "untested": " ",
+}
+
+_STATUS_COLOR = {
+    "passed": Fore.GREEN,
+    "failed": Fore.RED,
+    "skipped": Fore.YELLOW,
+    "undefined": Fore.MAGENTA,
+    "pending": Fore.YELLOW,
+    "running": Style.DIM,
+    "untested": Style.DIM,
 }
 
 
@@ -38,6 +49,14 @@ class ModernLiveFormatter(BaseFormatter):
     def _scenario_icon(self, status: str) -> str:
         return _STATUS_ICON.get(status.lower(), " ")
 
+    def _status_color(self, status: str) -> str:
+        return _STATUS_COLOR.get(status.lower(), "") if self.formatter_config.colors else ""
+
+    def _color(self, text: str, color: str) -> str:
+        if not self.formatter_config.colors or not color:
+            return text
+        return f"{color}{text}{Style.RESET_ALL}"
+
     def _print_scenarios(self) -> None:
         """Print newly completed scenarios above the progress bar."""
         cfg = self.formatter_config
@@ -48,17 +67,19 @@ class ModernLiveFormatter(BaseFormatter):
             for scenario in feature.scenarios:
                 if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
                     status = scenario.status.name.lower()
-                    icon = self._scenario_icon(status)
+                    icon = self._color(self._scenario_icon(status), self._status_color(status))
                     duration = f"({format_duration(scenario.duration)})" if scenario.duration else ""
-                    tqdm.write(f"  {icon} {scenario.name}  {duration}", file=self._stream)
+                    colored_duration = self._color(duration, Style.DIM) if duration else ""
+                    tqdm.write(f"  {icon} {scenario.name}  {colored_duration}", file=self._stream)
                     if cfg.show_steps:
                         for step in scenario.steps:
                             step_status = step.status.name.lower()
-                            step_icon = self._scenario_icon(step_status)
+                            step_icon = self._color(self._scenario_icon(step_status), self._status_color(step_status))
                             step_duration = f"({format_duration(step.duration)})" if step.duration else ""
+                            colored_step_duration = self._color(step_duration, Style.DIM) if step_duration else ""
                             keyword = f"{step.keyword} " if step.keyword else ""
                             tqdm.write(
-                                f"    {step_icon} {keyword}{step.name}  {step_duration}",
+                                f"    {step_icon} {keyword}{step.name}  {colored_step_duration}",
                                 file=self._stream,
                             )
                     self._printed_scenarios.add(id(scenario))
@@ -103,7 +124,7 @@ class ModernLiveFormatter(BaseFormatter):
 
         tqdm.write("", file=self._stream)
         tqdm.write("RESULTS", file=self._stream)
-        tqdm.write(f"  Passed   {execution.passed_scenarios}", file=self._stream)
-        tqdm.write(f"  Failed   {execution.failed_scenarios}", file=self._stream)
-        tqdm.write(f"  Skipped  {execution.skipped_scenarios}", file=self._stream)
-        tqdm.write(f"  ⏱ Duration {format_duration(execution.duration)}", file=self._stream)
+        tqdm.write(f"  {self._color('Passed', Fore.GREEN)}   {execution.passed_scenarios}", file=self._stream)
+        tqdm.write(f"  {self._color('Failed', Fore.RED)}   {execution.failed_scenarios}", file=self._stream)
+        tqdm.write(f"  {self._color('Skipped', Fore.YELLOW)}  {execution.skipped_scenarios}", file=self._stream)
+        tqdm.write(f"  {self._color('⏱ Duration', Style.DIM)} {format_duration(execution.duration)}", file=self._stream)
