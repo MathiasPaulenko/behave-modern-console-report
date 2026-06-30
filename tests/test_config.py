@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from behave_modern_console_report.config import FormatterConfig, Verbosity
+from behave_modern_console_report.config import FormatterConfig
 from tests.conftest import FakeBehaveConfig
 
 
@@ -12,8 +12,6 @@ def test_config_defaults() -> None:
     assert config.show_steps is True
     assert config.show_traceback is True
     assert config.show_progress is True
-    assert config.live is False
-    assert config.verbosity == Verbosity.NORMAL
 
 
 def test_config_formatter_specific() -> None:
@@ -23,15 +21,13 @@ def test_config_formatter_specific() -> None:
             {
                 "mcr.modern.colors": "false",
                 "mcr.modern.show_steps": "false",
-                "mcr.modern.live": "true",
-                "mcr.modern.verbosity": "verbose",
+                "mcr.modern.show_traceback": "false",
             }
         ),
     )
     assert config.colors is False
     assert config.show_steps is False
-    assert config.live is True
-    assert config.verbosity == Verbosity.VERBOSE
+    assert config.show_traceback is False
 
 
 def test_config_global_fallback() -> None:
@@ -59,11 +55,3 @@ def test_config_formatter_specific_overrides_global() -> None:
         ),
     )
     assert config.colors is True
-
-
-def test_config_invalid_verbosity_uses_default() -> None:
-    config = FormatterConfig(
-        "modern",
-        FakeBehaveConfig({"mcr.modern.verbosity": "unknown"}),
-    )
-    assert config.verbosity == Verbosity.NORMAL

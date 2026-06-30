@@ -7,16 +7,7 @@ fallback.
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import Any
-
-
-class Verbosity(str, Enum):
-    """Output verbosity levels."""
-
-    MINIMAL = "minimal"
-    NORMAL = "normal"
-    VERBOSE = "verbose"
 
 
 class FormatterConfig:
@@ -36,9 +27,6 @@ class FormatterConfig:
         self.show_steps = self._bool("show_steps", True)
         self.show_traceback = self._bool("show_traceback", True)
         self.show_progress = self._bool("show_progress", True)
-        self.live = self._bool("live", False)
-        self.verbosity = self._choice("verbosity", ["minimal", "normal", "verbose"], "normal")
-        self.theme = self._str("theme", "default")
 
     def _get(self, key: str, default: Any | None) -> Any | None:
         """Return formatter-specific value, falling back to global ``mcr.*``."""
@@ -54,11 +42,3 @@ class FormatterConfig:
         if isinstance(value, bool):
             return value
         return str(value).lower() in {"true", "1", "yes", "on"}
-
-    def _str(self, key: str, default: str) -> str:
-        value = self._get(key, None)
-        return str(value) if value is not None else default
-
-    def _choice(self, key: str, options: list[str], default: str) -> str:
-        value = self._str(key, default)
-        return value if value in options else default

@@ -55,7 +55,7 @@ def test_formatter_with_failed_scenario() -> None:
 
 
 def test_formatter_golden_output() -> None:
-    formatter = make_formatter({"mcr.colors": "false", "mcr.modern.show_progress": "false"})
+    formatter = make_formatter({"mcr.colors": "false"})
 
     for scenario_name, status, error in [
         ("Login", "passed", ""),
