@@ -123,7 +123,6 @@ class ModernLiveFormatter(BaseFormatter):
         execution = self._collector.execution
         self._print_scenarios()
         if self._pbar is not None:
-            tqdm.write("", file=self._stream)
             if self._pbar.total != execution.total_scenarios:
                 self._pbar.total = execution.total_scenarios
                 self._pbar.refresh()
