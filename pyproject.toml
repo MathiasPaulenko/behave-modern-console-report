@@ -53,7 +53,6 @@ dev = [
 [project.entry-points."behave.formatters"]
 modern = "behave_modern_console_report.formatters.modern:ModernFormatter"
 modern-live = "behave_modern_console_report.formatters.modern_live:ModernLiveFormatter"
-modern-tqdm = "behave_modern_console_report.formatters.modern_tqdm:ModernTqdmFormatter"
 log = "behave_modern_console_report.formatters.log:LogFormatter"
 ci = "behave_modern_console_report.formatters.ci:CIFormatter"
 minimal = "behave_modern_console_report.formatters.minimal:MinimalFormatter"

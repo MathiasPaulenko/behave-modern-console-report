@@ -8,7 +8,6 @@ from behave_modern_console_report.base import BaseFormatter
 from behave_modern_console_report.render import (
     feature_header,
     failures_block,
-    progress_bar,
     scenario_line,
     step_line,
     summary_block,
@@ -83,9 +82,6 @@ class ModernFormatter(BaseFormatter):
                                     for tb_line in step.error.traceback.splitlines():
                                         self._console.print(Text(f"      {tb_line}"))
                     self._printed_scenarios.add(id(scenario))
-        if cfg.show_progress:
-            self._console.print(Text(""))
-            self._console.print(progress_bar(self._collector.execution))
         self._console.print(summary_block(self._collector.execution))
         if cfg.show_traceback:
             failures = failures_block(self._collector.execution)

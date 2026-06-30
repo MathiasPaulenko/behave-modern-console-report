@@ -1,85 +1,103 @@
-"""Live-updating version of the modern formatter."""
+"""Live-updating modern formatter using tqdm for the progress bar."""
 
 from __future__ import annotations
 
-from rich.console import Console
-from rich.live import Live
-from rich.text import Text
+from typing import Any
 
-from behave_modern_console_report.formatters.modern import ModernFormatter
-from behave_modern_console_report.render import (
-    failures_block,
-    feature_header,
-    progress_bar,
-    scenario_line,
-    step_line,
-    summary_block,
-)
+from tqdm import tqdm
+
+from behave_modern_console_report.base import BaseFormatter
+from behave_modern_console_report.utils import format_duration
 
 
-class ModernLiveFormatter(ModernFormatter):
-    """Modern formatter that updates the same screen area in real time."""
+_STATUS_ICON = {
+    "passed": "✓",
+    "failed": "✗",
+    "skipped": "⏭",
+    "undefined": "?",
+    "pending": "P",
+    "running": "◌",
+    "untested": " ",
+}
+
+
+class ModernLiveFormatter(BaseFormatter):
+    """Live-updating modern report using tqdm for broad terminal support."""
 
     name = "modern-live"
-    description = "Live-updating modern console report (requires a modern terminal)"
+    description = "Live-updating modern report with tqdm progress bar"
 
     def __init__(self, stream, config) -> None:
         super().__init__(stream, config)
-        self._console = Console(
-            file=self._stream,
-            color_system="auto" if self.formatter_config.colors else None,
-        )
-        self._live = Live(
-            console=self._console,
-            auto_refresh=True,
-            refresh_per_second=2,
-            screen=False,
-            vertical_overflow="visible",
-        )
-        self._live.start(refresh=True)
+        self._printed_features: set[int] = set()
+        self._printed_scenarios: set[int] = set()
+        self._pbar: tqdm | None = None
 
-    def _print(self, text: Text) -> None:
-        """Live mode prints through the Live object instead of the stream."""
-        pass  # All rendering is handled in _render_full
+    def _scenario_icon(self, status: str) -> str:
+        return _STATUS_ICON.get(status.lower(), " ")
 
-    def _print_header(self) -> None:
-        pass
-
-    def _render_full(self, is_final: bool = False) -> Text:
-        """Render the entire screen content as a single Text object."""
+    def _print_scenarios(self) -> None:
+        """Print newly completed scenarios above the progress bar."""
         cfg = self.formatter_config
-        output = Text()
-        output.append("🚀 Behave Modern Console Report\n", style="bold")
-        output.append(f"Running {self._collector.execution.total_scenarios} scenarios...\n")
-
         for feature in self._collector.execution.features:
-            output.append_text(feature_header(feature))
-            output.append("\n")
+            if id(feature) not in self._printed_features:
+                tqdm.write(f"\nFeature: {feature.name}", file=self._stream)
+                self._printed_features.add(id(feature))
             for scenario in feature.scenarios:
-                output.append_text(scenario_line(scenario))
-                output.append("\n")
-                if cfg.show_steps:
-                    for step in scenario.steps:
-                        output.append_text(step_line(step))
-                        output.append("\n")
-
-        if cfg.show_progress:
-            output.append("\n")
-            output.append_text(progress_bar(self._collector.execution))
-            output.append("\n")
-        if is_final:
-            output.append_text(summary_block(self._collector.execution))
-            if cfg.show_traceback:
-                failures = failures_block(self._collector.execution)
-                if failures:
-                    output.append_text(failures)
-        return output
+                if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
+                    status = scenario.status.name.lower()
+                    icon = self._scenario_icon(status)
+                    duration = f"({format_duration(scenario.duration)})" if scenario.duration else ""
+                    tqdm.write(f"  {icon} {scenario.name}  {duration}", file=self._stream)
+                    if cfg.show_steps:
+                        for step in scenario.steps:
+                            step_status = step.status.name.lower()
+                            step_icon = self._scenario_icon(step_status)
+                            step_duration = f"({format_duration(step.duration)})" if step.duration else ""
+                            keyword = f"{step.keyword} " if step.keyword else ""
+                            tqdm.write(
+                                f"    {step_icon} {keyword}{step.name}  {step_duration}",
+                                file=self._stream,
+                            )
+                    self._printed_scenarios.add(id(scenario))
 
     def on_result(self) -> None:
-        """Refresh the live display."""
-        self._live.update(self._render_full())
+        """Update progress bar and print completed scenarios."""
+        execution = self._collector.execution
+        if self._pbar is None:
+            self._pbar = tqdm(
+                total=execution.total_scenarios,
+                desc="Scenarios",
+                unit="scen",
+                file=self._stream,
+                dynamic_ncols=True,
+                colour="green" if self.formatter_config.colors else None,
+                disable=execution.total_scenarios == 0,
+                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} scenarios [{elapsed}]",
+            )
+
+        self._print_scenarios()
+        if self._pbar.total != execution.total_scenarios:
+            self._pbar.total = execution.total_scenarios
+        completed = execution.completed_scenarios
+        if self._pbar.n < completed:
+            self._pbar.update(completed - self._pbar.n)
 
     def on_close(self) -> None:
-        """Render the final state and stop the live display."""
-        self._live.update(self._render_full(is_final=True))
-        self._live.stop()
+        """Print final output and close the progress bar."""
+        execution = self._collector.execution
+        self._print_scenarios()
+        if self._pbar is not None:
+            if self._pbar.total != execution.total_scenarios:
+                self._pbar.total = execution.total_scenarios
+            completed = execution.completed_scenarios
+            if self._pbar.n < completed:
+                self._pbar.update(completed - self._pbar.n)
+            self._pbar.close()
+
+        tqdm.write("", file=self._stream)
+        tqdm.write("RESULTS", file=self._stream)
+        tqdm.write(f"  Passed   {execution.passed_scenarios}", file=self._stream)
+        tqdm.write(f"  Failed   {execution.failed_scenarios}", file=self._stream)
+        tqdm.write(f"  Skipped  {execution.skipped_scenarios}", file=self._stream)
+        tqdm.write(f"  ⏱ Duration {format_duration(execution.duration)}", file=self._stream)
