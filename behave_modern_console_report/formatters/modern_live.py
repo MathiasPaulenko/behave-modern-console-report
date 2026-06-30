@@ -45,6 +45,17 @@ class ModernLiveFormatter(BaseFormatter):
         self._printed_scenarios: set[int] = set()
         self._pbar: tqdm | None = None
         colorama.init()
+        self._print_header()
+
+    def _print_header(self) -> None:
+        if self.formatter_config.colors:
+            self._stream.write(
+                f"{Style.BRIGHT}\n🚀 Behave Modern Console Report\n"
+                f"{Style.RESET_ALL}Running scenarios...\n\n"
+            )
+        else:
+            self._stream.write("\n🚀 Behave Modern Console Report\nRunning scenarios...\n\n")
+        self._stream.flush()
 
     def _scenario_icon(self, status: str) -> str:
         return _STATUS_ICON.get(status.lower(), " ")
