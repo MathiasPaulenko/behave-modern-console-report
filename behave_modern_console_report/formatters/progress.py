@@ -1,47 +1,71 @@
-"""Progress formatter."""
+"""Single-line live progress formatter."""
 
 from __future__ import annotations
 
-import time
+from colorama import Fore, Style
 
 from behave_modern_console_report.base import BaseFormatter
-from behave_modern_console_report.render import progress_bar, scenario_line, summary_block
+from behave_modern_console_report.models import Scenario
+from behave_modern_console_report.utils import format_duration
 
 
 class ProgressFormatter(BaseFormatter):
-    """Prints a progress bar after each completed scenario."""
+    """Single-line live progress bar that updates in place."""
 
     name = "progress"
-    description = "Prints a fresh progress bar after every scenario"
+    description = "Single-line live progress bar that updates in place"
 
     def __init__(self, stream, config) -> None:
         super().__init__(stream, config)
-        self._last_progress = 0.0
-        self._printed_scenarios: set[int] = set()
+        self._actual_stream = stream.open() if hasattr(stream, "open") else stream
+
+    def _running_scenario(self) -> Scenario | None:
+        for feature in self._collector.execution.features:
+            for scenario in feature.scenarios:
+                if not scenario.is_terminal:
+                    return scenario
+        return None
+
+    def _render_line(self) -> str:
+        execution = self._collector.execution
+        total = execution.total_scenarios
+        completed = execution.completed_scenarios
+        if total == 0:
+            text = "Running scenarios..."
+            return self._dim(text) if self.formatter_config.colors else text
+        percent = int(completed / total * 100)
+        width = 20
+        filled = int(width * completed / total)
+        bar = "█" * filled + "░" * (width - filled)
+        running = self._running_scenario()
+        running_text = running.name if running else "done"
+        if self.formatter_config.colors:
+            bar = f"{Fore.GREEN}{bar}{Style.RESET_ALL}"
+            running_text = f"{Style.DIM}{running_text}{Style.RESET_ALL}"
+        return f"{bar} {percent}% {completed}/{total} - {running_text}"
+
+    def _dim(self, text: str) -> str:
+        if not self.formatter_config.colors:
+            return text
+        return f"{Style.DIM}{text}{Style.RESET_ALL}"
+
+    def _print_line(self) -> None:
+        self._actual_stream.write("\r\033[K")
+        self._actual_stream.write(self._render_line())
+        self._actual_stream.flush()
 
     def on_result(self) -> None:
-        cfg = self.formatter_config
-        # Throttle progress bar updates to once per 0.5 seconds to avoid spam.
-        now = time.monotonic()
-        if now - self._last_progress < 0.5:
-            return
-        self._last_progress = now
-
-        for feature in self._collector.execution.features:
-            for scenario in feature.scenarios:
-                if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
-                    self._printed_scenarios.add(id(scenario))
-                    self._console.print(scenario_line(scenario))
-        if cfg.show_progress:
-            self._console.print(progress_bar(self._collector.execution))
+        """Update the single-line live progress bar."""
+        self._print_line()
 
     def on_close(self) -> None:
-        cfg = self.formatter_config
-        for feature in self._collector.execution.features:
-            for scenario in feature.scenarios:
-                if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
-                    self._printed_scenarios.add(id(scenario))
-                    self._console.print(scenario_line(scenario))
-        if cfg.show_progress:
-            self._console.print(progress_bar(self._collector.execution))
-        self._console.print(summary_block(self._collector.execution))
+        """Finalize the line and print the results."""
+        self._print_line()
+        self._actual_stream.write("\n")
+        self._actual_stream.flush()
+        execution = self._collector.execution
+        self._console.print("RESULTS")
+        self._console.print(f"  Passed {execution.passed_scenarios}")
+        self._console.print(f"  Failed {execution.failed_scenarios}")
+        self._console.print(f"  Skipped {execution.skipped_scenarios}")
+        self._console.print(f"  Duration {format_duration(execution.duration)}")
