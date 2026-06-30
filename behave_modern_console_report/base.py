@@ -30,8 +30,10 @@ class BaseFormatter(Formatter):
         self._closed = False
         self._console = Console(
             file=self._stream,
-            color_system="auto" if self.formatter_config.colors else None,
-            force_terminal=self.formatter_config.colors,
+            color_system="standard" if self.formatter_config.colors else None,
+            force_terminal=True,
+            markup=True,
+            highlight=False,
         )
 
     def feature(self, feature: BehaveFeature) -> None:
