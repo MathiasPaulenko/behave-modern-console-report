@@ -11,27 +11,107 @@ Inspired by modern developer tools such as Playwright CLI, pytest, and Cargo.
 
 ## Table of Contents
 
+- [Features](#features)
 - [Formatters](#formatters)
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
 - [Example output](#example-output)
+- [CI/CD](#cicd)
 - [Architecture](#architecture)
 - [Documentation](#documentation)
 - [Development](#development)
 - [Changelog](#changelog)
 - [License](#license)
 
+## Features
+
+- **Six formatters**: `modern`, `modern-live`, `progress`, `log`, `ci`, and `minimal` — each designed for a different use case.
+- **Real-time output**: Live scenario status updates as tests execute.
+- **Progress bar**: Completion percentage and scenario count during execution.
+- **Colored status icons**: Unicode icons (✓ ✗ ⏭ ? P) with color-coded results via Rich.
+- **Failure diagnostics**: Scenario name, error type, short message, and optional traceback.
+- **Per-formatter configuration**: `mcr.<formatter>.<key>` with global `mcr.<key>` fallback.
+- **CI-friendly**: The `ci` formatter produces compact, log-friendly output with colored status tags.
+- **Lightweight**: Only `rich` and `colorama` as dependencies.
+- **Cross-platform**: Works on Windows, macOS, and Linux.
+
 ## Formatters
 
-| Formatter | Description |
-| --- | --- |
-| `modern` | Playwright-like report with feature grouping, scenario/step lines, and end-of-run summary. |
-| `modern-live` | Live-updating version of `modern` using Rich Live for real-time status colors. |
-| `progress` | Single-line live progress bar that updates in place. |
-| `log` | Timestamped log output for every completed scenario and step. |
-| `ci` | CI-friendly output with colored status tags and end-of-run failure summary. |
-| `minimal` | Plain text output with only scenario names and a final summary. |
+| Formatter | Description | Best for |
+| --- | --- | --- |
+| `modern` | Playwright-like report with feature grouping, scenario/step lines, and end-of-run summary. | Local development. |
+| `modern-live` | Live-updating version of `modern` using Rich Live for real-time status colors. | Interactive terminals. |
+| `progress` | Single-line live progress bar that updates in place. | Quick runs, overview. |
+| `log` | Timestamped log output for every completed scenario and step. | CI logs, debugging. |
+| `ci` | CI-friendly output with colored status tags and end-of-run failure summary. | CI/CD pipelines. |
+| `minimal` | Plain text output with only scenario names and a final summary. | Minimal noise, piping. |
+
+### Formatter examples
+
+**`modern`** — grouped by feature with steps:
+
+```text
+Feature: Authentication
+
+  ✓ Login  (602ms)
+    ✓ Given I am on the login page
+    ✓ When I enter valid credentials
+    ✓ Then I should be logged in
+
+  ✗ Locked account shows error  (604ms)
+    ✓ Given I am on the login page
+    ✗ When I enter credentials for a locked account
+    ✗ Then I should see an error message
+
+RESULTS
+
+  Passed   18
+  Failed   1
+  Skipped  1
+
+  ⏱ Duration 9.1s
+```
+
+**`progress`** — single-line live update:
+
+```text
+████████████████████ 100% 20/20 - done
+```
+
+**`log`** — timestamped lines:
+
+```text
+2026-06-30 12:00:01 [PASS] Login (602ms)
+2026-06-30 12:00:02 [FAIL] Locked account shows error (604ms)
+2026-06-30 12:00:02 [SKIP] Login with social provider (0ms)
+```
+
+**`ci`** — colored status tags:
+
+```text
+PASS  Login (602ms)
+FAIL  Locked account shows error (604ms)
+SKIP  Login with social provider (0ms)
+
+████████████████████ 100% 20/20
+
+RESULTS
+  Passed   18
+  Failed   1
+  Skipped  1
+  Duration 9.1s
+```
+
+**`minimal`** — plain text only:
+
+```text
+Login
+Locked account shows error
+Login with social provider
+
+Passed: 18  Failed: 1  Skipped: 1  Duration: 9.1s
+```
 
 ## Installation
 
@@ -67,7 +147,7 @@ default_format=modern
 modern = behave_modern_console_report.formatters.modern:ModernFormatter
 ```
 
-2. Run Behave:
+1. Run Behave:
 
 ```bash
 behave
@@ -132,6 +212,41 @@ RESULTS
 
   ⏱ Duration 9.1s
 ```
+
+## CI/CD
+
+The `ci` formatter is designed for CI pipelines — compact, colored status tags, and a final failure summary.
+
+```bash
+behave --format=ci -D mcr.colors=false
+```
+
+### GitHub Actions
+
+```yaml
+name: Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: behave --format=ci -D mcr.colors=false
+```
+
+### Combining with the Markdown report
+
+Show console output and generate a Markdown report at the same time:
+
+```bash
+behave -f ci -o /dev/null -f behave_modern_md_report.formatter:BehaveMarkdownFormatter -o report.md
+```
+
+See [docs/ci-cd.md](docs/ci-cd.md) for GitLab CI, Azure DevOps, and Jenkins examples.
 
 ## Architecture
 
