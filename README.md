@@ -145,6 +145,11 @@ default_format=modern
 
 [behave.formatters]
 modern = behave_modern_console_report.formatters.modern:ModernFormatter
+modern-live = behave_modern_console_report.formatters.modern_live:ModernLiveFormatter
+progress = behave_modern_console_report.formatters.progress:ProgressFormatter
+log = behave_modern_console_report.formatters.log:LogFormatter
+ci = behave_modern_console_report.formatters.ci:CIFormatter
+minimal = behave_modern_console_report.formatters.minimal:MinimalFormatter
 ```
 
 1. Run Behave:
