@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from colorama import Fore, Style
 
 from behave_modern_console_report.base import BaseFormatter
@@ -18,6 +20,10 @@ class ProgressFormatter(BaseFormatter):
     def __init__(self, stream, config) -> None:
         super().__init__(stream, config)
         self._actual_stream = stream.open() if hasattr(stream, "open") else stream
+        self._last_completed = -1
+        self._is_tty = (
+            hasattr(self._actual_stream, "isatty") and self._actual_stream.isatty()
+        )
 
     def _running_scenario(self) -> Scenario | None:
         for feature in self._collector.execution.features:
@@ -50,19 +56,26 @@ class ProgressFormatter(BaseFormatter):
         return f"{Style.DIM}{text}{Style.RESET_ALL}"
 
     def _print_line(self) -> None:
-        self._actual_stream.write("\r\033[K")
-        self._actual_stream.write(self._render_line())
+        if self._is_tty:
+            self._actual_stream.write("\r\033[K")
+            self._actual_stream.write(self._render_line())
+        else:
+            self._actual_stream.write(self._render_line() + "\n")
         self._actual_stream.flush()
 
     def on_result(self) -> None:
-        """Update the single-line live progress bar."""
-        self._print_line()
+        """Update the progress bar only when a scenario completes."""
+        completed = self._collector.execution.completed_scenarios
+        if completed != self._last_completed:
+            self._last_completed = completed
+            self._print_line()
 
     def on_close(self) -> None:
         """Finalize the line and print the results."""
         self._print_line()
-        self._actual_stream.write("\n")
-        self._actual_stream.flush()
+        if self._is_tty:
+            self._actual_stream.write("\n")
+            self._actual_stream.flush()
         execution = self._collector.execution
         self._console.print("RESULTS")
         self._console.print(f"  Passed {execution.passed_scenarios}")
