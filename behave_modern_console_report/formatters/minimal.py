@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from behave_modern_console_report.base import BaseFormatter
 from behave_modern_console_report.utils import format_duration
 
@@ -12,7 +14,7 @@ class MinimalFormatter(BaseFormatter):
     name = "minimal"
     description = "Minimal plain text output with only scenarios and summary"
 
-    def __init__(self, stream, config) -> None:
+    def __init__(self, stream: Any, config: Any) -> None:
         super().__init__(stream, config)
         self._printed_scenarios: set[int] = set()
 
@@ -30,9 +32,24 @@ class MinimalFormatter(BaseFormatter):
 
     def on_close(self) -> None:
         """Print the final summary in plain text."""
+        # Print any terminal scenarios that were never emitted via on_result
+        # (e.g. skipped scenarios that never receive a step result event).
+        for feature in self._collector.execution.features:
+            for scenario in feature.scenarios:
+                if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
+                    self._printed_scenarios.add(id(scenario))
+                    status = scenario.status.name.upper()
+                    self._console.print(
+                        f"[{status}] {scenario.name} ({format_duration(scenario.duration)})",
+                        style="",
+                    )
         execution = self._collector.execution
         self._console.print("RESULTS")
         self._console.print(f"  Passed {execution.passed_scenarios}")
         self._console.print(f"  Failed {execution.failed_scenarios}")
         self._console.print(f"  Skipped {execution.skipped_scenarios}")
+        if execution.undefined_scenarios:
+            self._console.print(f"  Undefined {execution.undefined_scenarios}")
+        if execution.pending_scenarios:
+            self._console.print(f"  Pending {execution.pending_scenarios}")
         self._console.print(f"  Duration {format_duration(execution.duration)}")

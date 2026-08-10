@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from rich.text import Text
 
 from behave_modern_console_report.base import BaseFormatter
 from behave_modern_console_report.render import (
-    feature_header,
     failures_block,
+    feature_header,
     scenario_line,
     step_line,
     summary_block,
@@ -20,7 +22,7 @@ class ModernFormatter(BaseFormatter):
     name = "modern"
     description = "Playwright-like console report with feature grouping"
 
-    def __init__(self, stream, config) -> None:
+    def __init__(self, stream: Any, config: Any) -> None:
         super().__init__(stream, config)
         self._printed_features: set[int] = set()
         self._printed_scenarios: set[int] = set()
@@ -54,7 +56,9 @@ class ModernFormatter(BaseFormatter):
                         for step in scenario.steps:
                             self._print(step_line(step))
                             if step.is_failed and step.error and cfg.show_traceback:
-                                self._console.print(Text(f"      {step.error.message}", style="red"))
+                                self._console.print(
+                                    Text(f"      {step.error.message}", style="red")
+                                )
                                 if step.error.traceback:
                                     for tb_line in step.error.traceback.splitlines():
                                         self._console.print(Text(f"      {tb_line}", style="red"))
@@ -77,7 +81,9 @@ class ModernFormatter(BaseFormatter):
                         for step in scenario.steps:
                             self._print(step_line(step))
                             if step.is_failed and step.error and cfg.show_traceback:
-                                self._console.print(Text(f"      {step.error.message}", style="red"))
+                                self._console.print(
+                                    Text(f"      {step.error.message}", style="red")
+                                )
                                 if step.error.traceback:
                                     for tb_line in step.error.traceback.splitlines():
                                         self._console.print(Text(f"      {tb_line}", style="red"))

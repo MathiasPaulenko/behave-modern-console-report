@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from rich.text import Text
 
 from behave_modern_console_report.base import BaseFormatter
@@ -15,7 +17,7 @@ class CIFormatter(BaseFormatter):
     name = "ci"
     description = "Plain text output suitable for CI logs"
 
-    def __init__(self, stream, config) -> None:
+    def __init__(self, stream: Any, config: Any) -> None:
         super().__init__(stream, config)
         self._printed_scenarios: set[int] = set()
         self._printed_steps: set[int] = set()
@@ -45,13 +47,28 @@ class CIFormatter(BaseFormatter):
                                     style=self._status_style(step.status.name),
                                 )
                                 step_line.append(
-                                    f" {step.keyword} {step.name} ({format_duration(step.duration)})"
+                                    f" {step.keyword} {step.name}"
+                                    f" ({format_duration(step.duration)})"
                                 )
                                 self._console.print(step_line)
 
     def on_close(self) -> None:
         """Print a final progress bar, summary, and failure details."""
         cfg = self.formatter_config
+        # Print any terminal scenarios that were never emitted via on_result.
+        for feature in self._collector.execution.features:
+            for scenario in feature.scenarios:
+                if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
+                    self._printed_scenarios.add(id(scenario))
+                    line = Text()
+                    line.append(
+                        f"[{scenario.status.name.upper()}]",
+                        style=self._status_style(scenario.status.name),
+                    )
+                    line.append(
+                        f" {feature.name} / {scenario.name} ({format_duration(scenario.duration)})"
+                    )
+                    self._console.print(line)
         if cfg.show_progress:
             self._console.print(progress_bar(self._collector.execution))
         self._console.print(summary_block(self._collector.execution))

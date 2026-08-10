@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-import sys
+from typing import TYPE_CHECKING, Any
 
 from colorama import Fore, Style
 
 from behave_modern_console_report.base import BaseFormatter
-from behave_modern_console_report.models import Scenario
 from behave_modern_console_report.utils import format_duration
+
+if TYPE_CHECKING:
+    from behave_modern_console_report.models import Scenario
 
 
 class ProgressFormatter(BaseFormatter):
@@ -17,13 +19,11 @@ class ProgressFormatter(BaseFormatter):
     name = "progress"
     description = "Single-line live progress bar that updates in place"
 
-    def __init__(self, stream, config) -> None:
+    def __init__(self, stream: Any, config: Any) -> None:
         super().__init__(stream, config)
-        self._actual_stream = stream.open() if hasattr(stream, "open") else stream
+        self._actual_stream = self._stream
         self._last_completed = -1
-        self._is_tty = (
-            hasattr(self._actual_stream, "isatty") and self._actual_stream.isatty()
-        )
+        self._is_tty = hasattr(self._actual_stream, "isatty") and self._actual_stream.isatty()
 
     def _running_scenario(self) -> Scenario | None:
         for feature in self._collector.execution.features:
@@ -81,4 +81,8 @@ class ProgressFormatter(BaseFormatter):
         self._console.print(f"  Passed {execution.passed_scenarios}")
         self._console.print(f"  Failed {execution.failed_scenarios}")
         self._console.print(f"  Skipped {execution.skipped_scenarios}")
+        if execution.undefined_scenarios:
+            self._console.print(f"  Undefined {execution.undefined_scenarios}")
+        if execution.pending_scenarios:
+            self._console.print(f"  Pending {execution.pending_scenarios}")
         self._console.print(f"  Duration {format_duration(execution.duration)}")

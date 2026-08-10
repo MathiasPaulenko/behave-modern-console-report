@@ -17,7 +17,13 @@ def make_formatter(user_data: dict[str, str] | None = None) -> ModernFormatter:
     return ModernFormatter(opener, config)
 
 
-def _run_scenario(formatter, feature_name, scenario_name, status, error="") -> None:
+def _run_scenario(
+    formatter: ModernFormatter,
+    feature_name: str,
+    scenario_name: str,
+    status: str,
+    error: str = "",
+) -> None:
     formatter.feature(FakeFeature(name=feature_name))
     formatter.scenario(FakeScenario(name=scenario_name))
     formatter.step(FakeStep(name=f"run {scenario_name.lower()}"))
@@ -54,6 +60,27 @@ def test_formatter_with_failed_scenario() -> None:
     assert "Failed   1" in output
 
 
+def test_formatter_failed_scenario_without_error_type() -> None:
+    """Regression: failures_block should not print a blank line for empty error type."""
+    formatter = make_formatter({"mcr.colors": "false"})
+    _run_scenario(
+        formatter,
+        "Checkout",
+        "Payment fails",
+        "failed",
+        "Something went wrong",
+    )
+    formatter.close()
+
+    output = formatter._stream.getvalue()
+    assert "Payment fails" in output
+    assert "Something went wrong" in output
+    lines = output.splitlines()
+    assert not any(
+        line.strip() == "" and i > 0 and "Feature:" in lines[i - 1] for i, line in enumerate(lines)
+    )
+
+
 def test_formatter_golden_output() -> None:
     formatter = make_formatter({"mcr.colors": "false"})
 
@@ -74,3 +101,21 @@ def test_formatter_golden_output() -> None:
     assert "Passed   2" in output
     assert "Failed   1" in output
     assert "Duration" in output
+
+
+def test_formatter_with_undefined_scenario() -> None:
+    """Regression: UNDEFINED scenarios should be counted and displayed in summary."""
+    formatter = make_formatter({"mcr.colors": "false"})
+
+    for scenario_name, status, error in [
+        ("Login", "passed", ""),
+        ("Register", "undefined", ""),
+    ]:
+        _run_scenario(formatter, "E-commerce", scenario_name, status, error)
+
+    formatter.close()
+
+    output = formatter._stream.getvalue()
+    assert "Passed   1" in output
+    assert "Undefined" in output
+    assert "1" in output

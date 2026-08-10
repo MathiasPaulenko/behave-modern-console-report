@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+from typing import Any
 
 from rich.text import Text
 
@@ -22,12 +23,12 @@ class LogFormatter(BaseFormatter):
     name = "log"
     description = "Timestamped log output for every completed feature/scenario/step"
 
-    def __init__(self, stream, config) -> None:
+    def __init__(self, stream: Any, config: Any) -> None:
         super().__init__(stream, config)
         self._printed_scenarios: set[int] = set()
         self._printed_steps: set[int] = set()
 
-    def feature(self, feature) -> None:
+    def feature(self, feature: Any) -> None:
         super().feature(feature)
         self._console.print(f"[{_timestamp()}] Feature: {feature.name}")
 
@@ -78,9 +79,30 @@ class LogFormatter(BaseFormatter):
         return ""
 
     def on_close(self) -> None:
+        # Print any terminal scenarios that were never emitted via on_result.
+        for feature in self._collector.execution.features:
+            for scenario in feature.scenarios:
+                if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
+                    self._printed_scenarios.add(id(scenario))
+                    line = Text(f"[{_timestamp()}] ")
+                    line.append(
+                        f"[{scenario.status.name.upper()}]",
+                        style=self._status_style(scenario.status.name),
+                    )
+                    line.append(
+                        f" Scenario {status_text(scenario.status)}: {scenario.name} "
+                        f"({format_duration(scenario.duration)})"
+                    )
+                    self._console.print(line)
         execution = self._collector.execution
-        self._console.print(f"[{_timestamp()}] Execution finished in {format_duration(execution.duration)}")
+        self._console.print(
+            f"[{_timestamp()}] Execution finished in {format_duration(execution.duration)}"
+        )
         self._console.print(
             f"[{_timestamp()}] Passed: {execution.passed_scenarios}, "
             f"Failed: {execution.failed_scenarios}, Skipped: {execution.skipped_scenarios}"
         )
+        if execution.undefined_scenarios:
+            self._console.print(f"[{_timestamp()}] Undefined: {execution.undefined_scenarios}")
+        if execution.pending_scenarios:
+            self._console.print(f"[{_timestamp()}] Pending: {execution.pending_scenarios}")

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from rich.live import Live
 from rich.text import Text
 
 from behave_modern_console_report.base import BaseFormatter
 from behave_modern_console_report.render import (
-    feature_header,
     failures_block,
+    feature_header,
     progress_bar,
     scenario_line,
     step_line,
@@ -22,7 +24,7 @@ class ModernLiveFormatter(BaseFormatter):
     name = "modern-live"
     description = "Live-updating modern report with real-time status colors"
 
-    def __init__(self, stream, config) -> None:
+    def __init__(self, stream: Any, config: Any) -> None:
         super().__init__(stream, config)
         self._live = Live(
             console=self._console,

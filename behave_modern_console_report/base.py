@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from behave.formatter.base import Formatter
-from behave.model import Feature as BehaveFeature
-from behave.model import Scenario as BehaveScenario
-from behave.model import Step as BehaveStep
 from rich.console import Console
 
 from behave_modern_console_report.collector import Collector
 from behave_modern_console_report.config import FormatterConfig
 
+if TYPE_CHECKING:
+    from behave.model import Feature as BehaveFeature
+    from behave.model import Scenario as BehaveScenario
+    from behave.model import Step as BehaveStep
 
-class BaseFormatter(Formatter):
+
+class BaseFormatter(Formatter):  # type: ignore[misc]
     """Shared base for all MCR formatters."""
 
     name: str = "base"
@@ -22,9 +24,10 @@ class BaseFormatter(Formatter):
 
     def __init__(self, stream: Any, config: Any) -> None:
         """Initialize the formatter with a stream and Behave configuration."""
-        # Behave may pass a StreamOpener; unwrap the actual file for our own use.
-        self._stream = getattr(stream, "stream", stream)
         super().__init__(stream, config)
+        # Use the stream opened by Formatter.__init__ (self.stream), not the
+        # raw StreamOpener which may have stream=None before open() is called.
+        self._stream = self.stream
         self.formatter_config = FormatterConfig(self.name, config)
         self._collector = Collector(self.formatter_config)
         self._closed = False
