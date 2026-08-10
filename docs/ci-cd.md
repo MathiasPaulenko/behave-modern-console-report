@@ -9,8 +9,8 @@ The console formatters are designed to work well in CI/CD pipelines. The `ci` fo
 | `ci` | Best for CI — compact, colored status tags, end-of-run failure summary. |
 | `log` | Good for CI — timestamped lines, no live updates. |
 | `minimal` | Good for CI — plain text, no colors, minimal noise. |
-| `modern` | Works in CI but designed for interactive terminals. |
-| `modern-live` | Not recommended for CI — uses Rich Live which may not render correctly. |
+| `modern-console` | Works in CI but designed for interactive terminals. |
+| `modern-console-live` | Not recommended for CI — uses Rich Live which may not render correctly. |
 | `progress` | Not recommended for CI — uses in-place line updates. |
 
 ## GitHub Actions

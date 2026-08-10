@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "behave-modern-console-report"
-version = "1.0.1"
+version = "1.2.0"
 description = "A modern, real-time console report formatter for Behave."
 readme = "README.md"
 license = "MIT"
@@ -51,8 +51,8 @@ dev = [
 ]
 
 [project.entry-points."behave.formatters"]
-modern = "behave_modern_console_report.formatters.modern:ModernFormatter"
-modern-live = "behave_modern_console_report.formatters.modern_live:ModernLiveFormatter"
+modern-console = "behave_modern_console_report.formatters.modern:ModernFormatter"
+modern-console-live = "behave_modern_console_report.formatters.modern_live:ModernLiveFormatter"
 log = "behave_modern_console_report.formatters.log:LogFormatter"
 ci = "behave_modern_console_report.formatters.ci:CIFormatter"
 minimal = "behave_modern_console_report.formatters.minimal:MinimalFormatter"
@@ -88,8 +88,7 @@ select = [
     "ARG",
 ]
 ignore = [
-    "ANN101",  # missing type annotation for self in class methods
-    "ANN102",  # missing type annotation for cls in class methods
+    "ANN401",  # dynamically typed expressions (Any) - needed for behave's untyped API
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -101,6 +100,10 @@ strict = true
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["behave.*", "colorama"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

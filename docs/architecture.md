@@ -36,8 +36,8 @@ Converts the execution model into Rich `Text` objects. It produces scenario line
 
 Each formatter renders the model differently:
 
-- `modern` — Playwright-like report with feature grouping.
-- `modern-live` — Live-updating report using Rich `Live`.
+- `modern-console` — Playwright-like report with feature grouping.
+- `modern-console-live` — Live-updating report using Rich `Live`.
 - `progress` — Single-line live progress bar.
 - `log` — Timestamped log output.
 - `ci` — CI-friendly output with colored status tags.

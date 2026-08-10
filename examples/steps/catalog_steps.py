@@ -30,9 +30,7 @@ def step_user_sees_at_least_products(context: object, count: int) -> None:
 def step_user_searches(context: object, query: str) -> None:
     time.sleep(0.6)
     context.search_query = query
-    context.search_results = [
-        p for p in context.products if query.lower() in p["name"].lower()
-    ]
+    context.search_results = [p for p in context.products if query.lower() in p["name"].lower()]
 
 
 @then("the user sees {count:d} products")

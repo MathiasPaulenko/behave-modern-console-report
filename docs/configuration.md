@@ -22,7 +22,7 @@ The `show_progress` option is formatter-specific only (no global fallback).
 Disable colors globally:
 
 ```bash
-behave --format=modern -D mcr.colors=false
+behave --format=modern-console -D mcr.colors=false
 ```
 
 Override `show_steps` for a specific formatter:

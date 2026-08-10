@@ -26,10 +26,10 @@ Inspired by modern developer tools such as Playwright CLI, pytest, and Cargo.
 
 ## Features
 
-- **Six formatters**: `modern`, `modern-live`, `progress`, `log`, `ci`, and `minimal` — each designed for a different use case.
+- **Six formatters**: `modern-console`, `modern-console-live`, `progress`, `log`, `ci`, and `minimal` — each designed for a different use case.
 - **Real-time output**: Live scenario status updates as tests execute.
 - **Progress bar**: Completion percentage and scenario count during execution.
-- **Colored status icons**: Unicode icons (✓ ✗ ⏭ ? P) with color-coded results via Rich.
+- **Colored status icons**: Unicode icons (✓ ✗ ⏭ ? P ◌) with color-coded results via Rich.
 - **Failure diagnostics**: Scenario name, error type, short message, and optional traceback.
 - **Per-formatter configuration**: `mcr.<formatter>.<key>` with global `mcr.<key>` fallback.
 - **CI-friendly**: The `ci` formatter produces compact, log-friendly output with colored status tags.
@@ -40,8 +40,8 @@ Inspired by modern developer tools such as Playwright CLI, pytest, and Cargo.
 
 | Formatter | Description | Best for |
 | --- | --- | --- |
-| `modern` | Playwright-like report with feature grouping, scenario/step lines, and end-of-run summary. | Local development. |
-| `modern-live` | Live-updating version of `modern` using Rich Live for real-time status colors. | Interactive terminals. |
+| `modern-console` | Playwright-like report with feature grouping, scenario/step lines, and end-of-run summary. | Local development. |
+| `modern-console-live` | Live-updating version of `modern-console` using Rich Live for real-time status colors. | Interactive terminals. |
 | `progress` | Single-line live progress bar that updates in place. | Quick runs, overview. |
 | `log` | Timestamped log output for every completed scenario and step. | CI logs, debugging. |
 | `ci` | CI-friendly output with colored status tags and end-of-run failure summary. | CI/CD pipelines. |
@@ -49,7 +49,7 @@ Inspired by modern developer tools such as Playwright CLI, pytest, and Cargo.
 
 ### Formatter examples
 
-**`modern`** — grouped by feature with steps:
+**`modern-console`** — grouped by feature with steps:
 
 ```text
 Feature: Authentication
@@ -141,11 +141,11 @@ pip install -e ".[dev]"
 
 ```ini
 [behave]
-default_format=modern
+default_format=modern-console
 
 [behave.formatters]
-modern = behave_modern_console_report.formatters.modern:ModernFormatter
-modern-live = behave_modern_console_report.formatters.modern_live:ModernLiveFormatter
+modern-console = behave_modern_console_report.formatters.modern:ModernFormatter
+modern-console-live = behave_modern_console_report.formatters.modern_live:ModernLiveFormatter
 progress = behave_modern_console_report.formatters.progress:ProgressFormatter
 log = behave_modern_console_report.formatters.log:LogFormatter
 ci = behave_modern_console_report.formatters.ci:CIFormatter
@@ -161,7 +161,7 @@ behave
 You can also select a formatter from the command line:
 
 ```bash
-behave --format=modern-live
+behave --format=modern-console-live
 ```
 
 Or use the full module path without registering:
@@ -193,7 +193,7 @@ Each formatter reads its own `mcr.<formatter>.<key>` namespace with fallback to 
 Override from the command line:
 
 ```bash
-behave --format=modern -D mcr.colors=false -D mcr.show_steps=false
+behave --format=modern-console -D mcr.colors=false -D mcr.show_steps=false
 ```
 
 See [docs/configuration.md](docs/configuration.md) for the full reference.
