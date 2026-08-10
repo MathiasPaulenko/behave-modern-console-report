@@ -25,3 +25,18 @@ def test_format_duration_zero() -> None:
 
 def test_format_duration_micro() -> None:
     assert format_duration(0.00004) == "0ms"
+
+
+def test_format_duration_inf() -> None:
+    """Regression: format_duration must not crash on float('inf')."""
+    assert format_duration(float("inf")) == "0ms"
+
+
+def test_format_duration_nan() -> None:
+    """Regression: format_duration must not crash on float('nan')."""
+    assert format_duration(float("nan")) == "0ms"
+
+
+def test_format_duration_negative() -> None:
+    """Negative durations should be treated as zero."""
+    assert format_duration(-1.0) == "0ms"

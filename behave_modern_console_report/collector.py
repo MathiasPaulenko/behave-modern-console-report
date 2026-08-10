@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
-from behave.model import Feature as BehaveFeature
-from behave.model import Scenario as BehaveScenario
-from behave.model import Step as BehaveStep
-
-from behave_modern_console_report.config import FormatterConfig
 from behave_modern_console_report.models import Error, Execution, Feature, Scenario, Status, Step
 from behave_modern_console_report.utils import now
+
+if TYPE_CHECKING:
+    from behave.model import Feature as BehaveFeature
+    from behave.model import Scenario as BehaveScenario
+    from behave.model import Step as BehaveStep
+
+    from behave_modern_console_report.config import FormatterConfig
 
 
 def _tag_name(tag: Any) -> str:
@@ -25,17 +27,17 @@ class Collector:
         """Initialize the collector with formatter configuration."""
         self.config = config
         self.execution = Execution(start_time=now())
-        self._current_feature: Optional[Feature] = None
-        self._current_scenario: Optional[Scenario] = None
-        self._current_step: Optional[Step] = None
+        self._current_feature: Feature | None = None
+        self._current_scenario: Scenario | None = None
+        self._current_step: Step | None = None
         self._completed_scenarios: set[int] = set()
 
     def add_feature(self, feature: BehaveFeature) -> None:
         """Process a Behave feature event."""
         self._current_feature = Feature(
             name=feature.name,
-            description="\n".join(feature.description),
-            tags=[_tag_name(tag) for tag in feature.tags],
+            description="\n".join(feature.description or []),
+            tags=[_tag_name(tag) for tag in (feature.tags or [])],
             line=feature.line,
         )
         self.execution.features.append(self._current_feature)
@@ -46,7 +48,7 @@ class Collector:
         """Process a Behave scenario event."""
         self._current_scenario = Scenario(
             name=scenario.name,
-            tags=[_tag_name(tag) for tag in scenario.tags],
+            tags=[_tag_name(tag) for tag in (scenario.tags or [])],
             line=scenario.line,
             status=Status.from_behave(getattr(scenario, "status", None)),
         )
@@ -72,31 +74,32 @@ class Collector:
             if self._current_step.is_terminal:
                 self._update_scenario()
 
-    def set_running(self, match: Any) -> None:
+    def set_running(self, _match: Any) -> None:
         """Mark the current step as running when Behave emits a match."""
-        target = self._find_step_for_result(None)  # First non-terminal step
+        target = self._find_non_terminal_step()  # First non-terminal step
         if target is not None:
             self._current_step = target
             self._current_step.status = Status.RUNNING
-        if self._current_scenario is not None:
-            self._current_scenario.status = Status.RUNNING
+            if self._current_scenario is not None:
+                self._current_scenario.status = Status.RUNNING
 
     def update_result(self, result: BehaveStep) -> None:
         """Update the step that matches the result from Behave."""
-        target = self._find_step_for_result(result)
-        if target is None:
-            return
+        target = self._find_non_terminal_step()
+        if target is not None:
+            self._current_step = target
+            self._current_step.status = Status.from_behave(result.status)
+            self._current_step.duration = getattr(result, "duration", 0.0) or 0.0
+            if getattr(result, "error_message", "") or getattr(result, "exception", None):
+                self._current_step.error = _extract_error(result)
 
-        self._current_step = target
-        self._current_step.status = Status.from_behave(result.status)
-        self._current_step.duration = getattr(result, "duration", 0.0) or 0.0
-        if result.error_message:
-            self._current_step.error = _extract_error(result)
-
+        # Always recalculate scenario/feature status — even if no target was
+        # found, the scenario may have been set to RUNNING by set_running()
+        # and needs to be corrected based on actual step statuses.
         self._update_scenario()
         self._update_feature()
 
-    def _find_step_for_result(self, result: BehaveStep | None) -> Optional[Step]:
+    def _find_non_terminal_step(self) -> Step | None:
         """Return the first non-terminal step in the current scenario."""
         if self._current_scenario is None:
             return None
@@ -132,7 +135,7 @@ class Collector:
 
 def _extract_error(result: BehaveStep) -> Error:
     """Extract error information from a Behave step result."""
-    error_message = result.error_message or ""
+    error_message = getattr(result, "error_message", "") or ""
     exception = getattr(result, "exception", None)
 
     if exception is not None:

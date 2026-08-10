@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 
 
@@ -14,7 +15,7 @@ def format_duration(seconds: float) -> str:
     Returns:
         A human-readable string such as ``3m42s`` or ``950ms``.
     """
-    if seconds < 0.001:
+    if not math.isfinite(seconds) or seconds < 0.001:
         return "0ms"
     if seconds < 1.0:
         return f"{int(seconds * 1000)}ms"

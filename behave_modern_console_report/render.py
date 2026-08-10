@@ -11,7 +11,6 @@ from rich.text import Text
 from behave_modern_console_report.models import Execution, Feature, Scenario, Status, Step
 from behave_modern_console_report.utils import format_duration
 
-
 STATUS_ICON = {
     Status.PASSED: "✓",
     Status.FAILED: "✗",
@@ -81,7 +80,9 @@ def progress_bar(execution: Execution, width: int = 28) -> Text:
     filled = int(width * execution.completion_rate)
     bar = Text("█" * filled + "░" * (width - filled), style="bold")
     percent = int(execution.completion_rate * 100)
-    bar.append(f"  {percent}%  {execution.completed_scenarios} / {execution.total_scenarios} scenarios")
+    bar.append(
+        f"  {percent}%  {execution.completed_scenarios} / {execution.total_scenarios} scenarios"
+    )
     return bar
 
 
@@ -97,6 +98,12 @@ def summary_block(execution: Execution) -> Text:
     lines.append(f"{execution.failed_scenarios}\n")
     lines.append_text(Text("  Skipped  ", style="yellow"))
     lines.append(f"{execution.skipped_scenarios}\n")
+    if execution.undefined_scenarios:
+        lines.append_text(Text("  Undefined", style="magenta"))
+        lines.append(f"{execution.undefined_scenarios}\n")
+    if execution.pending_scenarios:
+        lines.append_text(Text("  Pending  ", style="yellow"))
+        lines.append(f"{execution.pending_scenarios}\n")
     lines.append("\n")
     lines.append(f"  ⏱ Duration {format_duration(execution.duration)}\n")
     return lines
@@ -123,7 +130,8 @@ def failures_block(execution: Execution) -> Text:
         lines.append(f"  Feature: {feature.name} (line {scenario.line})\n")
         for step in scenario.steps:
             if step.is_failed and step.error:
-                lines.append_text(Text(f"  {step.error.type}\n", style="red"))
+                if step.error.type:
+                    lines.append_text(Text(f"  {step.error.type}\n", style="red"))
                 lines.append_text(Text(f"  {step.error.message}\n", style="red"))
                 if step.error.traceback:
                     lines.append_text(Text(step.error.traceback, style="dim red"))

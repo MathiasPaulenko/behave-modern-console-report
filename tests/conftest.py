@@ -32,6 +32,7 @@ class FakeScenario:
     name: str = "Scenario"
     tags: list[FakeTag] = field(default_factory=list)
     line: int = 2
+    status: str | None = None
 
 
 @dataclass

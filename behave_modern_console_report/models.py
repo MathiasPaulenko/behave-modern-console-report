@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Any
 
 
 class Status(Enum):
@@ -24,16 +24,18 @@ class Status(Enum):
     UNTESTED = "untested"
 
     @classmethod
-    def from_behave(cls, status: str) -> "Status":
+    def from_behave(cls, status: Any) -> Status:
         """Map a Behave status string to an internal Status value.
 
         Args:
-            status: Behave status string, e.g. ``passed``, ``failed``.
+            status: Behave status string or enum, e.g. ``passed``, ``failed``.
 
         Returns:
             The corresponding internal Status value. Unknown values are mapped
             to ``UNTESTED``.
         """
+        if status is None:
+            return cls.UNTESTED
         mapping = {
             "passed": cls.PASSED,
             "failed": cls.FAILED,
@@ -41,8 +43,9 @@ class Status(Enum):
             "undefined": cls.UNDEFINED,
             "pending": cls.PENDING,
             "executing": cls.RUNNING,
+            "running": cls.RUNNING,
         }
-        status_name = getattr(status, "name", str(status))
+        status_name = str(getattr(status, "name", str(status)))
         return mapping.get(status_name.lower(), cls.UNTESTED)
 
 
@@ -70,7 +73,7 @@ class Step:
     keyword: str = ""
     status: Status = Status.UNTESTED
     duration: float = 0.0
-    error: Optional[Error] = None
+    error: Error | None = None
     line: int = 0
 
     @property
@@ -130,11 +133,15 @@ class Scenario:
             self.status = Status.UNDEFINED
         elif any(step.status == Status.PENDING for step in self.steps):
             self.status = Status.PENDING
-        elif all(step.status == Status.PASSED for step in self.steps):
+        elif all(step.status in (Status.PASSED, Status.SKIPPED) for step in self.steps) and any(
+            step.status == Status.PASSED for step in self.steps
+        ):
             self.status = Status.PASSED
         elif all(step.status == Status.SKIPPED for step in self.steps):
             self.status = Status.SKIPPED
-        elif any(step.status == Status.RUNNING for step in self.steps):
+        elif any(step.status == Status.RUNNING for step in self.steps) or not all(
+            step.is_terminal for step in self.steps
+        ):
             self.status = Status.RUNNING
         else:
             self.status = Status.UNTESTED
@@ -162,10 +169,18 @@ class Feature:
             self.status = Status.FAILED
         elif any(scenario.status == Status.UNDEFINED for scenario in self.scenarios):
             self.status = Status.UNDEFINED
-        elif all(scenario.status == Status.PASSED for scenario in self.scenarios):
+        elif any(scenario.status == Status.PENDING for scenario in self.scenarios):
+            self.status = Status.PENDING
+        elif all(
+            scenario.status in (Status.PASSED, Status.SKIPPED) for scenario in self.scenarios
+        ) and any(scenario.status == Status.PASSED for scenario in self.scenarios):
             self.status = Status.PASSED
         elif all(scenario.status == Status.SKIPPED for scenario in self.scenarios):
             self.status = Status.SKIPPED
+        elif any(scenario.status == Status.RUNNING for scenario in self.scenarios) or not all(
+            scenario.is_terminal for scenario in self.scenarios
+        ):
+            self.status = Status.RUNNING
         else:
             self.status = Status.UNTESTED
 
@@ -175,13 +190,15 @@ class Execution:
     """Root aggregate for a single Behave execution."""
 
     features: list[Feature] = field(default_factory=list)
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
+    start_time: float | None = None
+    end_time: float | None = None
     total_scenarios: int = 0
     completed_scenarios: int = 0
     passed_scenarios: int = 0
     failed_scenarios: int = 0
     skipped_scenarios: int = 0
+    undefined_scenarios: int = 0
+    pending_scenarios: int = 0
 
     def add_scenario_result(self, status: Status) -> None:
         """Update aggregate counters when a scenario finishes."""
@@ -192,6 +209,10 @@ class Execution:
             self.failed_scenarios += 1
         elif status == Status.SKIPPED:
             self.skipped_scenarios += 1
+        elif status == Status.UNDEFINED:
+            self.undefined_scenarios += 1
+        elif status == Status.PENDING:
+            self.pending_scenarios += 1
 
     @property
     def duration(self) -> float:
