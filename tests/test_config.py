@@ -53,6 +53,15 @@ def test_config_global_show_progress_is_ignored() -> None:
     assert config.show_progress is True
 
 
+def test_config_registered_formatter_name() -> None:
+    """Per-formatter keys use the registered name (e.g. modern-console)."""
+    config = FormatterConfig(
+        "modern-console",
+        FakeBehaveConfig({"mcr.modern-console.colors": "false"}),
+    )
+    assert config.colors is False
+
+
 def test_config_formatter_specific_overrides_global() -> None:
     config = FormatterConfig(
         "ci",

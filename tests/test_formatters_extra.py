@@ -10,10 +10,14 @@ from behave.formatter.base import StreamOpener
 from behave_modern_console_report.formatters.ci import CIFormatter
 from behave_modern_console_report.formatters.log import LogFormatter
 from behave_modern_console_report.formatters.minimal import MinimalFormatter
+from behave_modern_console_report.formatters.modern import ModernFormatter
+from behave_modern_console_report.formatters.modern_live import ModernLiveFormatter
 from behave_modern_console_report.formatters.progress import ProgressFormatter
 from tests.conftest import FakeFeature, FakeScenario, FakeStep
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from behave_modern_console_report.base import BaseFormatter
 
 
@@ -218,3 +222,90 @@ def test_formatter_step_without_match() -> None:
     formatter.close()
     output = formatter._stream.getvalue()
     assert "Login" in output
+
+
+# --- Output stream (-o file) ---
+
+
+def test_formatter_writes_to_outfile(tmp_path: Path) -> None:
+    """Regression: `-o file` must write to the file, not fall back to stdout.
+
+    Behave opens the output stream lazily via StreamOpener; the formatter must
+    call open() before use or the stream stays None and output is lost.
+    """
+    outfile = tmp_path / "report.txt"
+    opener = StreamOpener(str(outfile))
+    config = type("Config", (), {"userdata": {}})()
+    formatter = MinimalFormatter(opener, config)
+    _run_scenario(formatter, "Auth", "User logs in", "passed")
+    formatter.close()
+    content = outfile.read_text(encoding="utf-8")
+    assert "[PASSED]" in content
+    assert "User logs in" in content
+
+
+def test_progress_formatter_with_outfile(tmp_path: Path) -> None:
+    """Regression: ProgressFormatter must not crash when `-o file` is used."""
+    outfile = tmp_path / "progress.txt"
+    opener = StreamOpener(str(outfile))
+    config = type("Config", (), {"userdata": {}})()
+    formatter = ProgressFormatter(opener, config)
+    _run_scenario(formatter, "Auth", "User logs in", "passed")
+    formatter.close()
+    content = outfile.read_text(encoding="utf-8")
+    assert "Passed" in content
+
+
+# --- Unicode-safe output ---
+
+
+def test_formatter_unicode_safe_stream() -> None:
+    """Regression: Unicode icons must not crash on non-UTF-8 streams (cp1252)."""
+    buffer = io.BytesIO()
+    stream = io.TextIOWrapper(buffer, encoding="cp1252")
+    opener = StreamOpener(stream=stream)
+    config = type("Config", (), {"userdata": {}})()
+    formatter = ModernFormatter(opener, config)
+    _run_scenario(formatter, "Auth", "User logs in", "passed")
+    formatter.close()
+    buffer.seek(0)
+    output = buffer.read().decode("utf-8")
+    assert "User logs in" in output
+    assert "✓" in output
+
+
+# --- ModernLiveFormatter ---
+
+
+def test_modern_live_formatter_non_tty() -> None:
+    """Live formatter on a non-TTY stream prints the final report once."""
+    formatter = _make_formatter(ModernLiveFormatter, {"mcr.colors": "false"})
+    _run_scenario(formatter, "Auth", "User logs in", "passed")
+    formatter.close()
+    output = formatter._stream.getvalue()
+    assert "User logs in" in output
+    assert "Passed" in output
+    assert "RESULTS" in output
+
+
+def test_modern_live_formatter_failed() -> None:
+    formatter = _make_formatter(ModernLiveFormatter, {"mcr.colors": "false"})
+    _run_scenario(formatter, "Auth", "Login fails", "failed", "AssertionError: bad")
+    formatter.close()
+    output = formatter._stream.getvalue()
+    assert "Login fails" in output
+    assert "Failed" in output
+
+
+# --- Leftover scenarios ---
+
+
+def test_empty_scenario_counted_at_close() -> None:
+    """Scenarios with no steps must be finalized and counted at close."""
+    formatter = _make_formatter(MinimalFormatter, {"mcr.colors": "false"})
+    formatter.feature(FakeFeature(name="Auth"))
+    formatter.scenario(FakeScenario(name="Empty scenario"))
+    formatter.close()
+    output = formatter._stream.getvalue()
+    assert "Empty scenario" in output
+    assert "Skipped 1" in output

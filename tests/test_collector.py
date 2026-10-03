@@ -1,7 +1,8 @@
 """Tests for the event collector."""
 
-from behave_modern_console_report.collector import Collector
+from behave_modern_console_report.collector import Collector, _extract_error
 from behave_modern_console_report.config import FormatterConfig
+from behave_modern_console_report.models import Status
 from tests.conftest import FakeBehaveConfig, FakeFeature, FakeMatch, FakeScenario, FakeStep
 
 
@@ -34,9 +35,6 @@ def test_add_step_attaches_to_scenario() -> None:
 
 
 def test_set_running_marks_step() -> None:
-    from behave_modern_console_report.models import Status
-    from tests.conftest import FakeMatch
-
     collector = make_collector()
     collector.add_feature(FakeFeature())
     collector.add_scenario(FakeScenario())
@@ -47,8 +45,6 @@ def test_set_running_marks_step() -> None:
 
 
 def test_update_result_passed() -> None:
-    from behave_modern_console_report.models import Status
-
     collector = make_collector()
     collector.add_feature(FakeFeature())
     collector.add_scenario(FakeScenario())
@@ -61,8 +57,6 @@ def test_update_result_passed() -> None:
 
 
 def test_update_result_failed() -> None:
-    from behave_modern_console_report.models import Status
-
     collector = make_collector()
     collector.add_feature(FakeFeature())
     collector.add_scenario(FakeScenario())
@@ -113,8 +107,6 @@ def test_add_scenario_with_none_tags() -> None:
 
 def test_update_result_undefined() -> None:
     """Regression: UNDEFINED scenarios must be counted in undefined_scenarios."""
-    from behave_modern_console_report.models import Status
-
     collector = make_collector()
     collector.add_feature(FakeFeature())
     collector.add_scenario(FakeScenario())
@@ -129,8 +121,6 @@ def test_update_result_undefined() -> None:
 
 def test_extract_error_with_exception() -> None:
     """_extract_error should use exception type name when exception is present."""
-    from behave_modern_console_report.collector import _extract_error
-
     step = FakeStep(
         status="failed",
         error_message="Traceback here",
@@ -144,8 +134,6 @@ def test_extract_error_with_exception() -> None:
 
 def test_extract_error_multiline_with_colon() -> None:
     """_extract_error should split type from message on first colon."""
-    from behave_modern_console_report.collector import _extract_error
-
     step = FakeStep(
         status="failed",
         error_message="AssertionError: expected 200\nactual 500",
@@ -158,8 +146,6 @@ def test_extract_error_multiline_with_colon() -> None:
 
 def test_update_result_exception_without_error_message() -> None:
     """Regression: error must be extracted when exception is set but error_message is empty."""
-    from behave_modern_console_report.models import Status
-
     collector = make_collector()
     collector.add_feature(FakeFeature())
     collector.add_scenario(FakeScenario())
@@ -181,8 +167,6 @@ def test_update_result_exception_without_error_message() -> None:
 
 def test_extract_error_empty_message_no_exception() -> None:
     """_extract_error with empty message and no exception should return empty Error."""
-    from behave_modern_console_report.collector import _extract_error
-
     step = FakeStep(status="failed", error_message="")
     error = _extract_error(step)
     assert error.type == ""
@@ -191,8 +175,6 @@ def test_extract_error_empty_message_no_exception() -> None:
 
 def test_extract_error_single_line_no_colon() -> None:
     """_extract_error with a single line and no colon should use it as message."""
-    from behave_modern_console_report.collector import _extract_error
-
     step = FakeStep(status="failed", error_message="Something went wrong")
     error = _extract_error(step)
     assert error.type == ""
@@ -201,8 +183,6 @@ def test_extract_error_single_line_no_colon() -> None:
 
 def test_extract_error_multiline_no_colon() -> None:
     """_extract_error with multiline and no colon on first line."""
-    from behave_modern_console_report.collector import _extract_error
-
     step = FakeStep(
         status="failed",
         error_message="Something went wrong\nDetails here",
@@ -221,7 +201,6 @@ def test_set_running_no_non_terminal_step() -> None:
     set_running() would set the scenario to RUNNING, but update_result() couldn't
     find a non-terminal step to update, leaving the scenario stuck in RUNNING.
     """
-    from behave_modern_console_report.models import Status
 
     collector = make_collector()
     collector.add_feature(FakeFeature())
@@ -235,7 +214,6 @@ def test_set_running_no_non_terminal_step() -> None:
 def test_update_result_recovers_from_incorrect_running() -> None:
     """Regression: update_result() must recalculate scenario status even when
     no non-terminal step is found, to correct any incorrect RUNNING state."""
-    from behave_modern_console_report.models import Status
 
     collector = make_collector()
     collector.add_feature(FakeFeature())
