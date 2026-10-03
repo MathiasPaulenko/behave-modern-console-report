@@ -21,20 +21,26 @@ from behave_modern_console_report.render import (
 class ModernLiveFormatter(BaseFormatter):
     """Live-updating modern report with real-time status colors."""
 
-    name = "modern-live"
+    name = "modern-console-live"
     description = "Live-updating modern report with real-time status colors"
 
     def __init__(self, stream: Any, config: Any) -> None:
         super().__init__(stream, config)
-        self._live = Live(
-            console=self._console,
-            auto_refresh=True,
-            refresh_per_second=2,
-            screen=False,
-            vertical_overflow="visible",
-        )
-        self._live.start(refresh=True)
-        self._live.update(self._render())
+        # Rich Live needs a real terminal for in-place updates; on files or
+        # pipes degrade to printing the final report once instead of dumping
+        # a frame per refresh.
+        self._live_enabled = self._console.is_terminal
+        self._live: Live | None = None
+        if self._live_enabled:
+            self._live = Live(
+                console=self._console,
+                auto_refresh=True,
+                refresh_per_second=2,
+                screen=False,
+                vertical_overflow="visible",
+            )
+            self._live.start(refresh=True)
+            self._live.update(self._render())
 
     def _render(self, is_final: bool = False) -> Text:
         """Render the full report. Running scenarios/steps are dim; completed are colored."""
@@ -71,9 +77,13 @@ class ModernLiveFormatter(BaseFormatter):
 
     def on_result(self) -> None:
         """Refresh the live display with the current execution state."""
-        self._live.update(self._render())
+        if self._live is not None:
+            self._live.update(self._render())
 
     def on_close(self) -> None:
         """Show the final report and stop the live display."""
-        self._live.update(self._render(is_final=True))
-        self._live.stop()
+        if self._live is not None:
+            self._live.update(self._render(is_final=True))
+            self._live.stop()
+        else:
+            self._console.print(self._render(is_final=True))
