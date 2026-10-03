@@ -31,6 +31,7 @@ class Collector:
         self._current_scenario: Scenario | None = None
         self._current_step: Step | None = None
         self._completed_scenarios: set[int] = set()
+        self._behave_scenarios: dict[int, BehaveScenario] = {}
 
     def add_feature(self, feature: BehaveFeature) -> None:
         """Process a Behave feature event."""
@@ -54,6 +55,7 @@ class Collector:
         )
         if self._current_feature is not None:
             self._current_feature.scenarios.append(self._current_scenario)
+        self._behave_scenarios[id(self._current_scenario)] = scenario
         self.execution.total_scenarios += 1
         # Scenarios may already be terminal when added (e.g. tagged as @skip).
         if self._current_scenario.is_terminal:
@@ -127,10 +129,32 @@ class Collector:
         """Derive the current feature's status."""
         if self._current_feature is not None:
             self._current_feature.update_status()
+            self._current_feature.duration = sum(
+                scenario.duration for scenario in self._current_feature.scenarios
+            )
 
     def finish(self) -> None:
-        """Mark the execution as finished."""
+        """Mark the execution as finished and finalize leftover scenarios.
+
+        Scenarios that never produced step results (e.g. empty scenarios) stay
+        non-terminal forever. Behave knows their final status, so re-read it
+        here and count them; truly unrunnable ones are reported as skipped.
+        """
         self.execution.end_time = now()
+        for feature in self.execution.features:
+            for scenario in feature.scenarios:
+                if scenario.is_terminal:
+                    continue
+                behave_scenario = self._behave_scenarios.get(id(scenario))
+                final = Status.from_behave(getattr(behave_scenario, "status", None))
+                if final == Status.UNTESTED or final == Status.RUNNING:
+                    # Never executed (or aborted mid-run): count as skipped so
+                    # the scenario is not silently dropped from the summary.
+                    final = Status.SKIPPED
+                scenario.status = final
+                scenario.duration = sum(step.duration for step in scenario.steps)
+                self.execution.add_scenario_result(final)
+            feature.update_status()
 
 
 def _extract_error(result: BehaveStep) -> Error:
