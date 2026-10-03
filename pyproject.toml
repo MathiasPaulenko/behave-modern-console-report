@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
-    { name = "Mathias Paulenko", email = "mpaulenko@example.com" },
+    { name = "Mathias Paulenko" },
 ]
 keywords = [
     "behave",
@@ -23,7 +23,7 @@ keywords = [
     "cli",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
@@ -39,24 +39,18 @@ classifiers = [
 dependencies = [
     "behave>=1.2.6",
     "rich>=13.0.0",
-    "colorama>=0.4.6",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=5.0.0",
-    "ruff>=0.5.0",
+    "ruff>=0.8.0",
     "mypy>=1.11.0",
 ]
-
-[project.entry-points."behave.formatters"]
-modern-console = "behave_modern_console_report.formatters.modern:ModernFormatter"
-modern-console-live = "behave_modern_console_report.formatters.modern_live:ModernLiveFormatter"
-log = "behave_modern_console_report.formatters.log:LogFormatter"
-ci = "behave_modern_console_report.formatters.ci:CIFormatter"
-minimal = "behave_modern_console_report.formatters.minimal:MinimalFormatter"
-progress = "behave_modern_console_report.formatters.progress:ProgressFormatter"
+docs = [
+    "mkdocs>=1.6.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/MathiasPaulenko/behave-modern-console-report"
@@ -84,7 +78,7 @@ select = [
     "C4",
     "SIM",
     "ANN",
-    "TCH",
+    "TC",
     "ARG",
 ]
 ignore = [
@@ -102,7 +96,7 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["behave.*", "colorama"]
+module = ["behave.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
