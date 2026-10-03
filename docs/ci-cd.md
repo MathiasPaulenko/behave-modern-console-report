@@ -84,3 +84,5 @@ You can show console output and generate a Markdown report at the same time:
 ```bash
 behave -f ci -o /dev/null -f behave_modern_md_report.formatter:BehaveMarkdownFormatter -o report.md
 ```
+
+On Windows use `NUL` instead of `/dev/null`. You can also send the console report to a file with `-o report.txt`; the file is written in UTF-8 and without ANSI color codes.

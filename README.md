@@ -33,8 +33,8 @@ Inspired by modern developer tools such as Playwright CLI, pytest, and Cargo.
 - **Failure diagnostics**: Scenario name, error type, short message, and optional traceback.
 - **Per-formatter configuration**: `mcr.<formatter>.<key>` with global `mcr.<key>` fallback.
 - **CI-friendly**: The `ci` formatter produces compact, log-friendly output with colored status tags.
-- **Lightweight**: Only `rich` and `colorama` as dependencies.
-- **Cross-platform**: Works on Windows, macOS, and Linux.
+- **Lightweight**: Only `rich` as an external dependency (besides `behave`).
+- **Cross-platform**: Works on Windows, macOS, and Linux. Output is always UTF-8-safe, so Unicode icons never crash on non-UTF-8 terminals or when redirected to a file.
 
 ## Formatters
 
@@ -52,17 +52,25 @@ Inspired by modern developer tools such as Playwright CLI, pytest, and Cargo.
 **`modern-console`** — grouped by feature with steps:
 
 ```text
+🚀 Behave Modern Console Report
+Running scenarios...
+
+
 Feature: Authentication
 
   ✓ Login  (602ms)
     ✓ Given I am on the login page
-    ✓ When I enter valid credentials
+    ✓ When I enter valid credentials  (602ms)
     ✓ Then I should be logged in
-
   ✗ Locked account shows error  (604ms)
     ✓ Given I am on the login page
-    ✗ When I enter credentials for a locked account
+    ✓ When I enter credentials for a locked account  (604ms)
     ✗ Then I should see an error message
+      Invalid credentials
+  ⏭ Login with social provider
+    ⏭ Given I am on the login page
+    ⏭ When I choose to login with OAuth
+    ⏭ Then I should be logged in
 
 RESULTS
 
@@ -71,6 +79,14 @@ RESULTS
   Skipped  1
 
   ⏱ Duration 9.1s
+
+Failures
+
+✗ Locked account shows error
+  Feature: Authentication, scenario at line 25
+  AssertionError
+  Invalid credentials
+  ASSERT FAILED: Invalid credentials
 ```
 
 **`progress`** — single-line live update:
@@ -82,35 +98,40 @@ RESULTS
 **`log`** — timestamped lines:
 
 ```text
-2026-06-30 12:00:01 [PASS] Login (602ms)
-2026-06-30 12:00:02 [FAIL] Locked account shows error (604ms)
-2026-06-30 12:00:02 [SKIP] Login with social provider (0ms)
+[2026-06-30 12:00:01] [PASSED] Scenario passed: Login (602ms)
+[2026-06-30 12:00:02] [FAILED] Scenario failed: Locked account shows error (604ms)
+[2026-06-30 12:00:02] [SKIPPED] Scenario skipped: Login with social provider (0ms)
 ```
 
-**`ci`** — colored status tags:
+**`ci`** — colored status tags (with `Feature / Scenario` context):
 
 ```text
-PASS  Login (602ms)
-FAIL  Locked account shows error (604ms)
-SKIP  Login with social provider (0ms)
+[PASSED] Authentication / Login (602ms)
+[FAILED] Authentication / Locked account shows error (604ms)
+[SKIPPED] Authentication / Login with social provider (0ms)
 
-████████████████████ 100% 20/20
+████████████████████ 100% 20/20 scenarios
 
 RESULTS
+
   Passed   18
   Failed   1
   Skipped  1
-  Duration 9.1s
+
+  ⏱ Duration 9.1s
 ```
 
 **`minimal`** — plain text only:
 
 ```text
-Login
-Locked account shows error
-Login with social provider
-
-Passed: 18  Failed: 1  Skipped: 1  Duration: 9.1s
+[PASSED] Login (602ms)
+[FAILED] Locked account shows error (604ms)
+[SKIPPED] Login with social provider (0ms)
+RESULTS
+  Passed 18
+  Failed 1
+  Skipped 1
+  Duration 9.1s
 ```
 
 ## Installation
@@ -181,11 +202,11 @@ mcr.show_steps = true
 mcr.show_traceback = true
 ```
 
-Each formatter reads its own `mcr.<formatter>.<key>` namespace with fallback to global `mcr.<key>` keys. The `show_progress` option is formatter-specific (no global fallback).
+Each formatter reads its own `mcr.<formatter>.<key>` namespace with fallback to global `mcr.<key>` keys. `<formatter>` is the registered formatter name: `modern-console`, `modern-console-live`, `progress`, `log`, `ci`, or `minimal`. The `show_progress` option is formatter-specific (no global fallback).
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `mcr.colors` | `true` | Enable/disable colored output. |
+| `mcr.colors` | `true` | Enable/disable colored output. Colors are also auto-disabled when output is not a terminal (pipes, `-o` files). |
 | `mcr.show_steps` | `true` | Show step-level details. |
 | `mcr.show_traceback` | `true` | Show tracebacks for failed steps. |
 | `mcr.<formatter>.show_progress` | `true` | Show progress bar (formatter-specific, no global fallback). |
@@ -202,12 +223,14 @@ See [docs/configuration.md](docs/configuration.md) for the full reference.
 
 ```text
 🚀 Behave Modern Console Report
+Running scenarios...
+
 
 Feature: Authentication
 
   ✓ Login  (602ms)
   ✗ Locked account shows error  (604ms)
-  ⏭ Login with social provider  (0ms)
+  ⏭ Login with social provider
 
 RESULTS
 
@@ -251,6 +274,8 @@ Show console output and generate a Markdown report at the same time:
 behave -f ci -o /dev/null -f behave_modern_md_report.formatter:BehaveMarkdownFormatter -o report.md
 ```
 
+On Windows use `NUL` instead of `/dev/null`. You can also send the console report to a file with `-o report.txt` — files are written in UTF-8 without ANSI codes.
+
 See [docs/ci-cd.md](docs/ci-cd.md) for GitLab CI, Azure DevOps, and Jenkins examples.
 
 ## Architecture
@@ -276,7 +301,14 @@ See [docs/architecture.md](docs/architecture.md) for details.
 - [docs/usage.md](docs/usage.md) — usage examples and combining formatters.
 - [docs/ci-cd.md](docs/ci-cd.md) — GitHub Actions, GitLab CI, Azure DevOps, and Jenkins examples.
 - [docs/architecture.md](docs/architecture.md) — layered architecture and data flow.
-- [docs/contributing.md](docs/contributing.md) — development setup, code style, and submitting changes.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — development setup, code style, and submitting changes.
+
+The docs are also available as an MkDocs site. To build or serve them locally:
+
+```bash
+pip install -e ".[docs]"
+mkdocs serve
+```
 
 ## Development
 

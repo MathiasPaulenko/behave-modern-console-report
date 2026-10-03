@@ -6,14 +6,25 @@ Configuration is provided via Behave user data (`-D key=value`) or the `[behave.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `mcr.colors` | `true` | Enable/disable colored output. |
+| `mcr.colors` | `true` | Enable/disable colored output. Colors are also auto-disabled when output is not a terminal (pipes, `-o` files). |
 | `mcr.show_steps` | `true` | Show step-level details. |
 | `mcr.show_traceback` | `true` | Show tracebacks for failed steps. |
 | `mcr.<formatter>.show_progress` | `true` | Show progress bar (formatter-specific, no global fallback). |
 
 ## Per-formatter overrides
 
-Each formatter reads its own `mcr.<formatter>.<key>` namespace. When a formatter-specific key is missing, the global `mcr.<key>` is used as a fallback.
+Each formatter reads its own `mcr.<formatter>.<key>` namespace. `<formatter>` is the registered formatter name:
+
+| Formatter name | Config namespace |
+| --- | --- |
+| `modern-console` | `mcr.modern-console.*` |
+| `modern-console-live` | `mcr.modern-console-live.*` |
+| `progress` | `mcr.progress.*` |
+| `log` | `mcr.log.*` |
+| `ci` | `mcr.ci.*` |
+| `minimal` | `mcr.minimal.*` |
+
+When a formatter-specific key is missing, the global `mcr.<key>` is used as a fallback.
 
 The `show_progress` option is formatter-specific only (no global fallback).
 

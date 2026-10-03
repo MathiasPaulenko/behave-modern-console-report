@@ -1,0 +1,14 @@
+site_name: Behave Modern Console Report
+site_description: A modern, real-time console report formatter for Behave.
+repo_url: https://github.com/MathiasPaulenko/behave-modern-console-report
+
+theme:
+  name: readthedocs
+
+nav:
+  - Home: index.md
+  - Usage: usage.md
+  - Configuration: configuration.md
+  - CI/CD: ci-cd.md
+  - Architecture: architecture.md
+  - Contributing: contributing.md
