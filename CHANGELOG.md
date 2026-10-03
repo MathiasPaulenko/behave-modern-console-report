@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-10-03
+
+### Fixed
+- **`-o`/`--outfile` ignored by all formatters**: `BaseFormatter` now calls `open()` on the stream opener at construction. Behave opens output streams lazily, so the formatter previously saw `stream=None` and fell back to `sys.stdout` — the output file stayed empty and the report leaked to the console.
+- **Output stream never closed**: `BaseFormatter.close()` now calls `close_stream()` so `-o` files are properly closed.
+- **`progress` crash with `-o`**: `ProgressFormatter` no longer crashes with `AttributeError: 'NoneType' object has no attribute 'write'` when a file output is configured.
+- **`UnicodeEncodeError` on non-UTF-8 output (Windows)**: Output is wrapped in a UTF-8 `TextIOWrapper` when the underlying binary buffer is reachable, so icons (`✓`, `✗`, `⏭`, `█`, `░`, `⏱`, `🚀`) no longer crash on cp1252/cp850 terminals, pipes, or files — even with `mcr.colors=false`.
+- **ANSI codes in piped/file output**: `Console` no longer forces terminal mode; colors are auto-disabled on non-TTY output. `mcr.colors=false` is still honored explicitly.
+- **Per-formatter config namespace mismatch**: `mcr.<formatter>.<key>` now uses the registered formatter name (`modern-console`, `modern-console-live`) instead of the internal names (`modern`, `modern-live`), matching the documentation.
+- **Scenarios with no step results never counted**: `Collector.finish()` now finalizes leftover non-terminal scenarios using Behave's final status (unrun ones count as skipped).
+- **`Feature.duration` never computed**: Now aggregated from scenario durations.
+- **`modern-console-live` on non-terminals**: Falls back to printing the final report once instead of dumping a frame per refresh.
+- **`failures_block` misleading location label**: Now prints `Feature: <name>, scenario at line <n>` (the line is the scenario's), and tracebacks are indented consistently.
+- **`colorama` dependency removed**: The progress formatter used only ANSI constants; `colorama` was never initialized anyway.
+
+### Changed
+- **Removed `[project.entry-points."behave.formatters"]`**: Behave does not read entry points for formatters — registration works via `[behave.formatters]` in `behave.ini` or `module:Class` names, as documented.
+- Classifier updated to `Development Status :: 5 - Production/Stable`.
+- Added `py.typed` marker so the `Typing :: Typed` classifier is honored.
+- Ruff rule `TCH` renamed to `TC` (requires `ruff>=0.8.0`).
+
+### Added
+- MkDocs configuration (`mkdocs.yml`) and `docs/index.md` landing page; install `.[docs]` to build.
+- Tests covering `-o` file output, Unicode-safe streams, `modern-console-live`, and leftover scenarios.
+- CI smoke step running the example features through the formatters.
+
+### Documentation
+- README formatter output examples now match the real output (`log`, `ci`, `minimal`).
+- `examples/README.md` rewritten: removed references to nonexistent `modern_console_*` options and the old `modern` formatter name.
+- `docs/configuration.md` documents the exact `mcr.<formatter>.*` namespaces.
+- SECURITY.md supported versions fixed (1.2.x), placeholder `example.com` contacts replaced with GitHub links.
+- `docs/contributing.md` now points to the root `CONTRIBUTING.md` (single source of truth).
+- Windows `NUL` alternative added where `/dev/null` is used.
+
 ## [1.2.0] - 2026-08-10
 
 ### Fixed
