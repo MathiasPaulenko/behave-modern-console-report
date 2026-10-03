@@ -9,6 +9,7 @@ from rich.console import Console
 
 from behave_modern_console_report.collector import Collector
 from behave_modern_console_report.config import FormatterConfig
+from behave_modern_console_report.utils import ensure_unicode_stream
 
 if TYPE_CHECKING:
     from behave.model import Feature as BehaveFeature
@@ -25,16 +26,16 @@ class BaseFormatter(Formatter):  # type: ignore[misc]
     def __init__(self, stream: Any, config: Any) -> None:
         """Initialize the formatter with a stream and Behave configuration."""
         super().__init__(stream, config)
-        # Use the stream opened by Formatter.__init__ (self.stream), not the
-        # raw StreamOpener which may have stream=None before open() is called.
-        self._stream = self.stream
+        # Behave opens the output stream lazily: stream_opener.stream is None
+        # until open() is called. Without this call, `-o file` output is
+        # silently redirected to sys.stdout (Console defaults to it on None).
+        self._stream = ensure_unicode_stream(self.open())
         self.formatter_config = FormatterConfig(self.name, config)
         self._collector = Collector(self.formatter_config)
         self._closed = False
         self._console = Console(
             file=self._stream,
-            color_system="standard" if self.formatter_config.colors else None,
-            force_terminal=True,
+            no_color=None if self.formatter_config.colors else True,
             markup=True,
             highlight=False,
         )
@@ -70,6 +71,9 @@ class BaseFormatter(Formatter):  # type: ignore[misc]
         self._closed = True
         self._collector.finish()
         self.on_close()
+        # Let Behave close the output stream it opened (no-op for sys.stdout
+        # and pre-opened streams).
+        self.close_stream()
 
     def on_result(self) -> None:
         """Hook called after each step result. Override in subclasses."""
