@@ -15,7 +15,9 @@ name: Release
 #      with the matching CHANGELOG.md section.
 #
 # To cut a new release: bump `version` in pyproject.toml, commit, push. Done.
-# Manual tags also trigger this workflow so releases can be recreated.
+# To recreate a release for an existing version, delete the tag first and then
+# push it again (or re-run via workflow_dispatch after deleting the tag):
+# if the tag already exists the workflow exits without releasing.
 
 on:
   push:

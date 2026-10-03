@@ -56,6 +56,17 @@ jobs:
       - name: Run tests
         run: pytest --cov=behave_modern_console_report --cov-report=xml
 
+      - name: Smoke test formatters with real behave run
+        run: |
+          cd examples
+          # The "Locked account shows error" scenario fails on purpose.
+          behave -f minimal -o /tmp/mcr_minimal.txt || true
+          test -s /tmp/mcr_minimal.txt
+          behave -f modern-console -o /tmp/mcr_modern.txt -D mcr.colors=false || true
+          test -s /tmp/mcr_modern.txt
+          behave -f progress -o /tmp/mcr_progress.txt -D mcr.colors=false || true
+          test -s /tmp/mcr_progress.txt
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
