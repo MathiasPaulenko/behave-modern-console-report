@@ -127,15 +127,15 @@ def failures_block(execution: Execution) -> Text:
         lines.append("\n")
         lines.append_text(icon(Status.FAILED))
         lines.append(f" {scenario.name}\n")
-        lines.append(f"  Feature: {feature.name} (line {scenario.line})\n")
+        lines.append(f"  Feature: {feature.name}, scenario at line {scenario.line}\n")
         for step in scenario.steps:
             if step.is_failed and step.error:
                 if step.error.type:
                     lines.append_text(Text(f"  {step.error.type}\n", style="red"))
                 lines.append_text(Text(f"  {step.error.message}\n", style="red"))
                 if step.error.traceback:
-                    lines.append_text(Text(step.error.traceback, style="dim red"))
-                    lines.append("\n")
+                    for tb_line in step.error.traceback.splitlines():
+                        lines.append_text(Text(f"  {tb_line}\n", style="dim red"))
     return lines
 
 
