@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-11-17
+
+### Fixed
+- **Generic exceptions misreported as skipped**: Behave marks steps that raise a non-`AssertionError` with `error`, `hook_error`, or `cleanup_error`. `Status.from_behave()` left them unmapped, so they became `UNTESTED` and the scenario was reported as skipped while Behave counted an error. They now map to `FAILED`. The `xfailed`/`xpassed` and dry-run (`untested_*`, `pending_warn`) statuses are mapped too.
+- **`MarkupError` crash / swallowed text with markup in names**: Feature, scenario, and step names containing Rich markup (`[/]`, `[bold]`) crashed the run or were silently eaten, because they were printed as markup-parsed strings. All output now goes through `Text` objects and `Console(markup=False)`, so user text is always literal.
+- **ANSI escape injection**: Control characters (ESC, BEL, CR, ...) in user-controlled names and error messages could inject terminal escapes or corrupt single-line output. They are stripped at collection time.
+- **`minimal`/`log` printed bracketed names as markup**: `[SKIPPED] name (0ms)` and `[timestamp]` lines were built as plain strings and parsed as markup.
+- **Post-count status changes lost**: Hook/cleanup failures or `scenario.skip()` after the last step result could flip a scenario's Behave status after it was already counted. `Collector.finish()` now reconciles every scenario against Behave's own status and rebuilds the aggregate counters.
+- **Steps silently skipped after a failure rendered as untested**: Behave assigns `skipped` to remaining steps without a `result()` event; the collector now re-reads Behave's statuses so icons are truthful.
+- **Result applied to the wrong step**: Results are matched by step identity; the previous first-non-terminal fallback could misattribute results when earlier steps stayed non-terminal (e.g. dry-run).
+- **Orphan scenarios dropped from progress**: A `scenario` event without a preceding `feature` event incremented `total` but never `completed`; it is now counted.
+- **Stream leak when rendering fails**: `BaseFormatter.close()` closes the output stream in a `finally` block so `on_close()` errors can't leak `-o` files.
+- **`Execution.duration` reported 0 while running**: Now returns elapsed time when `end_time` is unset.
+- **`progress` ANSI erase on legacy Windows consoles**: `\r\033[K` replaced with `\r` + padding, which works everywhere. Newlines in running-scenario names no longer break the single-line bar.
+- **`ensure_unicode_stream` crashes/UnicodeEncodeError**: `TypeError` from `codecs.lookup` on non-string encodings is handled, and streams with a non-UTF-8 encoding but no reachable binary buffer get a write-time fallback that degrades unencodable characters instead of crashing.
+- **`FormatterConfig` crash on non-dict `userdata`**: Tolerates missing/mistyped `userdata`.
+- **`modern-console-live` stuck Live on render failure**: `on_close()` stops the `Live` display in a `finally` block.
+- **Error message first line parsed as type even when it was a traceback header**: `Traceback (most recent call last):` no longer becomes the error "type"; multi-line error messages are printed line-by-line with consistent indentation.
+
+### Changed
+- `mcr.*` boolean values now tolerate surrounding whitespace.
+- `BaseFormatter.on_result()` now fires on every Behave event (`feature`, `scenario`, `step`, `match`, `result`, `eof`), not just step results, so formatters emit late statuses promptly.
+- CI smoke test now exercises all six formatters.
+
 ## [1.3.0] - 2026-10-03
 
 ### Fixed
