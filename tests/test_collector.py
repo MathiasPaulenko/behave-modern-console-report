@@ -224,3 +224,233 @@ def test_update_result_recovers_from_incorrect_running() -> None:
     # update_result should recalculate and fix the status
     collector.update_result(FakeStep(status="skipped"))
     assert collector._current_scenario.status == Status.SKIPPED
+
+
+def test_update_result_error_status_counts_as_failed() -> None:
+    """Regression: a step raising a non-AssertionError (behave Status.error)
+    must count the scenario as failed, not skipped."""
+    collector = make_collector()
+    collector.add_feature(FakeFeature())
+    collector.add_scenario(FakeScenario())
+    collector.add_step(FakeStep())
+    collector.set_running(FakeMatch())
+    collector.update_result(
+        FakeStep(
+            status="error",
+            duration=0.1,
+            error_message="ERROR: ValueError: kaboom",
+            exception=ValueError("kaboom"),
+        )
+    )
+    assert collector._current_step.status == Status.FAILED
+    assert collector._current_scenario.status == Status.FAILED
+    assert collector.execution.failed_scenarios == 1
+    assert collector.execution.skipped_scenarios == 0
+
+
+def test_finish_syncs_silently_skipped_steps() -> None:
+    """Regression: steps marked skipped after a failure emit no result().
+
+    Behave assigns step.status=skipped without notifying the formatter, so
+    the internal steps stay UNTESTED. finish() must re-read behave statuses
+    so rendered icons are truthful.
+    """
+    collector = make_collector()
+    collector.add_feature(FakeFeature())
+    collector.add_scenario(FakeScenario())
+    behave_step_1 = FakeStep()
+    behave_step_2 = FakeStep()
+    collector.add_step(behave_step_1)
+    collector.add_step(behave_step_2)
+    collector.set_running(FakeMatch())
+    collector.update_result(
+        FakeStep(status="failed", duration=0.1, error_message="AssertionError: nope")
+    )
+    # Behave marks the remaining step skipped without a result() event.
+    behave_step_2.status = "skipped"
+    scenario = collector._current_scenario
+    assert scenario.status == Status.FAILED
+    assert scenario.steps[1].status == Status.UNTESTED  # stale until finish
+
+    collector.finish()
+    assert scenario.steps[1].status == Status.SKIPPED
+
+
+def test_finish_upgrades_late_hook_failure() -> None:
+    """Regression: a scenario counted PASSED can still fail afterwards when an
+    after_scenario hook or context cleanup raises. finish() must recount it
+    as failed."""
+    collector = make_collector()
+    collector.add_feature(FakeFeature())
+    behave_scenario = FakeScenario(status="untested")
+    collector.add_scenario(behave_scenario)
+    collector.add_step(FakeStep())
+    collector.set_running(FakeMatch())
+    collector.update_result(FakeStep(status="passed", duration=0.1))
+    assert collector.execution.passed_scenarios == 1
+
+    # The hook fails after the scenario was already counted.
+    behave_scenario.status = "hook_error"
+    collector.finish()
+    assert collector._current_scenario.status == Status.FAILED
+    assert collector.execution.passed_scenarios == 0
+    assert collector.execution.failed_scenarios == 1
+
+
+def test_finish_marks_mid_run_skip_as_skipped() -> None:
+    """Regression: scenario.skip() after passing steps makes Behave report the
+    scenario as skipped; finish() must reconcile the stale PASSED count."""
+    collector = make_collector()
+    collector.add_feature(FakeFeature())
+    behave_scenario = FakeScenario(status="untested")
+    collector.add_scenario(behave_scenario)
+    collector.add_step(FakeStep())
+    collector.set_running(FakeMatch())
+    collector.update_result(FakeStep(status="passed", duration=0.1))
+    assert collector.execution.passed_scenarios == 1
+
+    behave_scenario.status = "skipped"
+    collector.finish()
+    assert collector._current_scenario.status == Status.SKIPPED
+    assert collector.execution.passed_scenarios == 0
+    assert collector.execution.skipped_scenarios == 1
+
+
+def test_finish_keeps_undefined_over_behave_error() -> None:
+    """A scenario with an undefined step stays UNDEFINED even though Behave
+    reports the scenario status as 'error' (it folds undefined into error)."""
+    collector = make_collector()
+    collector.add_feature(FakeFeature())
+    behave_scenario = FakeScenario(status="error")
+    collector.add_scenario(behave_scenario)
+    collector.add_step(FakeStep())
+    collector.set_running(FakeMatch())
+    collector.update_result(FakeStep(status="undefined", duration=0.1))
+    collector.finish()
+    assert collector._current_scenario.status == Status.UNDEFINED
+    assert collector.execution.undefined_scenarios == 1
+    assert collector.execution.failed_scenarios == 0
+
+
+def test_update_result_matches_by_step_identity() -> None:
+    """Regression: a result must update its own step even when an earlier step
+    is still non-terminal (e.g. dry-run results that stay untested)."""
+    collector = make_collector()
+    collector.add_feature(FakeFeature())
+    collector.add_scenario(FakeScenario())
+    behave_step_1 = FakeStep()
+    behave_step_2 = FakeStep()
+    collector.add_step(behave_step_1)
+    collector.add_step(behave_step_2)
+
+    # Dry-run emulation: step 1 result stays untested; step 2 result must NOT
+    # be applied to step 1 again.
+    behave_step_1.status = "untested"
+    collector.update_result(behave_step_1)
+    behave_step_2.status = "undefined"
+    collector.update_result(behave_step_2)
+
+    steps = collector._current_scenario.steps
+    assert steps[0].status == Status.UNTESTED
+    assert steps[1].status == Status.UNDEFINED
+    assert collector._current_scenario.status == Status.UNDEFINED
+
+
+def test_update_result_for_unknown_step_creates_step() -> None:
+    """A result for a step never announced via step() must not be dropped."""
+    collector = make_collector()
+    collector.add_feature(FakeFeature())
+    collector.add_scenario(FakeScenario())
+    collector.add_step(FakeStep(status="skipped"))
+    # All known steps are terminal; a result arrives for an unknown step.
+    collector.update_result(FakeStep(name="mystery step", status="passed", duration=0.1))
+    steps = collector._current_scenario.steps
+    assert len(steps) == 2
+    assert steps[1].name == "mystery step"
+    assert steps[1].status == Status.PASSED
+
+
+def test_scenario_without_feature_is_counted() -> None:
+    """Regression: a scenario event with no prior feature must not make
+    completed < total forever."""
+    collector = make_collector()
+    behave_scenario = FakeScenario(status="untested")
+    collector.add_scenario(behave_scenario)  # no add_feature call
+    collector.add_step(FakeStep())
+    collector.set_running(FakeMatch())
+    collector.update_result(FakeStep(status="passed", duration=0.1))
+    collector.finish()
+    assert collector.execution.completed_scenarios == 1
+    assert collector.execution.passed_scenarios == 1
+    assert collector.execution.completion_rate == 1.0
+
+
+def test_finish_recomputes_feature_duration() -> None:
+    """Feature.duration aggregates leftover scenario durations at finish."""
+    collector = make_collector()
+    collector.add_feature(FakeFeature())
+    collector.add_scenario(FakeScenario(status="untested"))
+    collector.add_step(FakeStep())
+    collector.set_running(FakeMatch())
+    collector.update_result(FakeStep(status="passed", duration=2.5))
+    collector.finish()
+    assert collector.execution.features[0].duration == 2.5
+
+
+def test_extract_error_traceback_first_line_not_a_type() -> None:
+    """Regression: 'Traceback (most recent call last):' must not be parsed as
+    an error type."""
+    step = FakeStep(
+        status="failed",
+        error_message='Traceback (most recent call last):\n  File "x.py"',
+    )
+    error = _extract_error(step)
+    assert error.type == ""
+    assert error.message == "Traceback (most recent call last):"
+
+
+def test_extract_error_non_string_error_message() -> None:
+    """_extract_error must survive a non-string error_message."""
+    step = FakeStep(status="failed", error_message=123)  # type: ignore[arg-type]
+    error = _extract_error(step)
+    assert error.type == ""
+    assert error.message == "123"
+
+
+def test_update_result_non_numeric_duration() -> None:
+    """Regression: a non-numeric step duration must not break aggregation."""
+    collector = make_collector()
+    collector.add_feature(FakeFeature())
+    collector.add_scenario(FakeScenario())
+    collector.add_step(FakeStep())
+    collector.set_running(FakeMatch())
+    result = FakeStep(status="passed")
+    result.duration = "not-a-number"  # type: ignore[assignment]
+    collector.update_result(result)
+    assert collector._current_step.duration == 0.0
+    assert collector._current_scenario.duration == 0.0
+
+
+def test_add_step_without_scenario_is_ignored() -> None:
+    """A step event with no active scenario must not crash or leak state."""
+    collector = make_collector()
+    collector.add_step(FakeStep())
+    assert collector._current_scenario is None
+    assert collector.execution.total_scenarios == 0
+
+
+def test_update_result_without_scenario_does_not_crash() -> None:
+    """A result event with no active scenario is safely dropped."""
+    collector = make_collector()
+    collector.update_result(FakeStep(status="passed"))
+    assert collector.execution.total_scenarios == 0
+    assert collector.execution.completed_scenarios == 0
+
+
+def test_tag_name_handles_plain_strings() -> None:
+    """Tags may be plain strings rather than objects with .name."""
+    collector = make_collector()
+    feature = FakeFeature()
+    feature.tags = ["fast", "regression"]  # type: ignore[list-item]
+    collector.add_feature(feature)
+    assert collector.execution.features[0].tags == ["fast", "regression"]

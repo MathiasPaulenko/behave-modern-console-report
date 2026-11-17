@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from behave_modern_console_report.utils import now
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 class Status(Enum):
@@ -38,15 +43,36 @@ class Status(Enum):
             return cls.UNTESTED
         mapping = {
             "passed": cls.PASSED,
+            "xpassed": cls.PASSED,
             "failed": cls.FAILED,
+            # Behave uses these for steps that raised non-AssertionError
+            # exceptions and for hook/cleanup failures. They are failures.
+            "error": cls.FAILED,
+            "hook_error": cls.FAILED,
+            "cleanup_error": cls.FAILED,
             "skipped": cls.SKIPPED,
+            "xfailed": cls.SKIPPED,
             "undefined": cls.UNDEFINED,
+            "untested_undefined": cls.UNDEFINED,
             "pending": cls.PENDING,
+            "pending_warn": cls.PENDING,
+            "untested_pending": cls.PENDING,
             "executing": cls.RUNNING,
             "running": cls.RUNNING,
         }
         status_name = str(getattr(status, "name", str(status)))
-        return mapping.get(status_name.lower(), cls.UNTESTED)
+        return mapping.get(status_name.strip().lower(), cls.UNTESTED)
+
+    @property
+    def is_terminal(self) -> bool:
+        """Return True if the status is final (no further updates expected)."""
+        return self in {
+            Status.PASSED,
+            Status.FAILED,
+            Status.SKIPPED,
+            Status.UNDEFINED,
+            Status.PENDING,
+        }
 
 
 @dataclass
@@ -79,13 +105,7 @@ class Step:
     @property
     def is_terminal(self) -> bool:
         """Return True if the step has a final status."""
-        return self.status in {
-            Status.PASSED,
-            Status.FAILED,
-            Status.SKIPPED,
-            Status.UNDEFINED,
-            Status.PENDING,
-        }
+        return self.status.is_terminal
 
     @property
     def is_failed(self) -> bool:
@@ -112,13 +132,7 @@ class Scenario:
     @property
     def is_terminal(self) -> bool:
         """Return True if the scenario has a final status."""
-        return self.status in {
-            Status.PASSED,
-            Status.FAILED,
-            Status.SKIPPED,
-            Status.UNDEFINED,
-            Status.PENDING,
-        }
+        return self.status.is_terminal
 
     def update_status(self) -> None:
         """Derive the scenario status from its steps."""
@@ -214,12 +228,23 @@ class Execution:
         elif status == Status.PENDING:
             self.pending_scenarios += 1
 
+    def recount(self, scenarios: Iterable[Scenario]) -> None:
+        """Recompute all aggregate counters from final scenario statuses."""
+        self.completed_scenarios = 0
+        self.passed_scenarios = 0
+        self.failed_scenarios = 0
+        self.skipped_scenarios = 0
+        self.undefined_scenarios = 0
+        self.pending_scenarios = 0
+        for scenario in scenarios:
+            self.add_scenario_result(scenario.status)
+
     @property
     def duration(self) -> float:
         """Return the total execution duration in seconds."""
         if self.start_time is None:
             return 0.0
-        end = self.end_time if self.end_time is not None else self.start_time
+        end = self.end_time if self.end_time is not None else now()
         return end - self.start_time
 
     @property

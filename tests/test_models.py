@@ -21,6 +21,51 @@ def test_status_from_behave_mapping() -> None:
     assert Status.from_behave("unknown") == Status.UNTESTED
 
 
+def test_status_from_behave_error_statuses() -> None:
+    """Regression: error/hook_error/cleanup_error must map to FAILED.
+
+    Behave sets step.status=error when a step raises a non-AssertionError
+    exception, hook_error when a step hook fails, and cleanup_error when
+    context cleanup fails. They were silently mapped to UNTESTED, which made
+    real failures count as skipped in the summary.
+    """
+    assert Status.from_behave("error") == Status.FAILED
+    assert Status.from_behave("hook_error") == Status.FAILED
+    assert Status.from_behave("cleanup_error") == Status.FAILED
+
+
+def test_status_from_behave_xfail_statuses() -> None:
+    """Behave xfail/xpass statuses map to non-failure buckets."""
+    assert Status.from_behave("xfailed") == Status.SKIPPED
+    assert Status.from_behave("xpassed") == Status.PASSED
+
+
+def test_status_from_behave_pending_and_dry_run_statuses() -> None:
+    """Dry-run and wip variants map to their terminal equivalents."""
+    assert Status.from_behave("pending_warn") == Status.PENDING
+    assert Status.from_behave("untested_pending") == Status.PENDING
+    assert Status.from_behave("untested_undefined") == Status.UNDEFINED
+
+
+def test_status_from_behave_whitespace() -> None:
+    """Status strings with surrounding whitespace still map correctly."""
+    assert Status.from_behave(" passed ") == Status.PASSED
+
+
+def test_status_is_terminal() -> None:
+    """Regression: terminal status set shared by Step and Scenario."""
+    for terminal in (
+        Status.PASSED,
+        Status.FAILED,
+        Status.SKIPPED,
+        Status.UNDEFINED,
+        Status.PENDING,
+    ):
+        assert terminal.is_terminal
+    for non_terminal in (Status.RUNNING, Status.UNTESTED):
+        assert not non_terminal.is_terminal
+
+
 def test_status_from_behave_none() -> None:
     """Regression: Status.from_behave must handle None without crashing."""
     assert Status.from_behave(None) == Status.UNTESTED
@@ -246,9 +291,16 @@ def test_execution_duration_none_start() -> None:
 
 
 def test_execution_duration_none_end() -> None:
-    """Execution.duration with None end_time should use start_time as end (duration 0)."""
-    execution = Execution(start_time=5.0, end_time=None)
-    assert execution.duration == 0.0
+    """A running execution reports elapsed time, not zero."""
+    import behave_modern_console_report.models as models_module
+
+    original_now = models_module.now
+    try:
+        models_module.now = lambda: 8.0
+        execution = Execution(start_time=5.0, end_time=None)
+        assert execution.duration == 3.0
+    finally:
+        models_module.now = original_now
 
 
 def test_execution_completion_rate_zero_total() -> None:
