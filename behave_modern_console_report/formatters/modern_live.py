@@ -59,7 +59,8 @@ class ModernLiveFormatter(BaseFormatter):
                         lines.append_text(step_line(step))
                         lines.append("\n")
                         if step.is_failed and step.error and cfg.show_traceback:
-                            lines.append(f"      {step.error.message}\n", style="red")
+                            for message_line in step.error.message.splitlines() or [""]:
+                                lines.append(f"      {message_line}\n", style="red")
                             if step.error.traceback:
                                 for tb_line in step.error.traceback.splitlines():
                                     lines.append(f"      {tb_line}\n", style="red")
@@ -83,7 +84,11 @@ class ModernLiveFormatter(BaseFormatter):
     def on_close(self) -> None:
         """Show the final report and stop the live display."""
         if self._live is not None:
-            self._live.update(self._render(is_final=True))
-            self._live.stop()
+            try:
+                self._live.update(self._render(is_final=True))
+            finally:
+                # A failed render must not leave Live refreshing forever.
+                self._live.stop()
+                self._live = None
         else:
             self._console.print(self._render(is_final=True))

@@ -36,25 +36,32 @@ class BaseFormatter(Formatter):  # type: ignore[misc]
         self._console = Console(
             file=self._stream,
             no_color=None if self.formatter_config.colors else True,
-            markup=True,
+            # All output is built as Rich Text objects; markup parsing stays
+            # off so user-controlled names/messages can never be parsed as
+            # markup (crash) or silently lose bracketed text.
+            markup=False,
             highlight=False,
         )
 
     def feature(self, feature: BehaveFeature) -> None:
         """Handle a Behave feature event."""
         self._collector.add_feature(feature)
+        self.on_result()
 
     def scenario(self, scenario: BehaveScenario) -> None:
         """Handle a Behave scenario event."""
         self._collector.add_scenario(scenario)
+        self.on_result()
 
     def step(self, step: BehaveStep) -> None:
         """Handle a Behave step event."""
         self._collector.add_step(step)
+        self.on_result()
 
     def match(self, match: Any) -> None:
         """Handle a Behave step match event."""
         self._collector.set_running(match)
+        self.on_result()
 
     def result(self, result: BehaveStep) -> None:
         """Handle a Behave step result event."""
@@ -63,6 +70,7 @@ class BaseFormatter(Formatter):  # type: ignore[misc]
 
     def eof(self) -> None:
         """Handle end-of-feature event."""
+        self.on_result()
 
     def close(self) -> None:
         """Finalize the report."""
@@ -70,13 +78,16 @@ class BaseFormatter(Formatter):  # type: ignore[misc]
             return
         self._closed = True
         self._collector.finish()
-        self.on_close()
-        # Let Behave close the output stream it opened (no-op for sys.stdout
-        # and pre-opened streams).
-        self.close_stream()
+        try:
+            self.on_close()
+        finally:
+            # Let Behave close the output stream it opened (no-op for
+            # sys.stdout and pre-opened streams). Runs even if rendering
+            # fails so `-o` files are never left open.
+            self.close_stream()
 
     def on_result(self) -> None:
-        """Hook called after each step result. Override in subclasses."""
+        """Hook called after every model change event. Override in subclasses."""
 
     def on_close(self) -> None:
         """Hook called once at the end of the execution. Override in subclasses."""

@@ -21,7 +21,8 @@ class FormatterConfig:
             behave_config: Behave configuration object.
         """
         self.formatter_name = formatter_name
-        self._user_data = getattr(behave_config, "userdata", {}) or {}
+        user_data = getattr(behave_config, "userdata", None)
+        self._user_data = user_data if isinstance(user_data, dict) else {}
 
         self.colors = self._bool("colors", True)
         self.show_steps = self._bool("show_steps", True)
@@ -41,17 +42,15 @@ class FormatterConfig:
         return value if value is not None else default
 
     def _bool(self, key: str, default: bool) -> bool:
-        value = self._get(key, None)
-        if value is None:
-            return default
-        if isinstance(value, bool):
-            return value
-        return str(value).lower() in {"true", "1", "yes", "on"}
+        return self._to_bool(self._get(key, None), default)
 
     def _bool_formatter_specific(self, key: str, default: bool) -> bool:
-        value = self._get_formatter_specific(key, None)
+        return self._to_bool(self._get_formatter_specific(key, None), default)
+
+    @staticmethod
+    def _to_bool(value: Any, default: bool) -> bool:
         if value is None:
             return default
         if isinstance(value, bool):
             return value
-        return str(value).lower() in {"true", "1", "yes", "on"}
+        return str(value).strip().lower() in {"true", "1", "yes", "on"}

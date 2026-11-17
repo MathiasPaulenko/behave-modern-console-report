@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from rich.text import Text
+
 from behave_modern_console_report.base import BaseFormatter
 from behave_modern_console_report.utils import format_duration
 
@@ -26,12 +28,12 @@ class MinimalFormatter(BaseFormatter):
         self._printed_scenarios.add(id(scenario))
         status = scenario.status.name.upper()
         self._console.print(
-            f"[{status}] {scenario.name} ({format_duration(scenario.duration)})",
-            style="",
+            Text(f"[{status}] {scenario.name} ({format_duration(scenario.duration)})")
         )
 
     def _emit_pending(self) -> None:
         """Print all terminal scenarios that have not been emitted yet."""
+        self._collector.sync_scenarios()
         for feature in self._collector.execution.features:
             for scenario in feature.scenarios:
                 if scenario.is_terminal and id(scenario) not in self._printed_scenarios:

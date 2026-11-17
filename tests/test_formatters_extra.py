@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
+import pytest
 from behave.formatter.base import StreamOpener
 
 from behave_modern_console_report.formatters.ci import CIFormatter
@@ -295,6 +296,193 @@ def test_modern_live_formatter_failed() -> None:
     output = formatter._stream.getvalue()
     assert "Login fails" in output
     assert "Failed" in output
+
+
+# --- Hostile input: Rich markup and terminal escapes ---
+
+
+@pytest.mark.parametrize(
+    "formatter_cls",
+    [
+        ModernFormatter,
+        ModernLiveFormatter,
+        CIFormatter,
+        LogFormatter,
+        MinimalFormatter,
+    ],
+)
+def test_formatter_markup_in_name_does_not_crash(formatter_cls: type) -> None:
+    """Regression: names containing Rich markup ([/], [bold]) must render
+    literally instead of crashing with MarkupError or losing text."""
+    formatter = _make_formatter(formatter_cls, {"mcr.colors": "false"})
+    formatter.feature(FakeFeature(name="Feat [/]"))
+    formatter.scenario(FakeScenario(name="scenario [/] [bold] name"))
+    formatter.step(FakeStep(name="step [red] text"))
+    formatter.match(None)
+    # Give the formatter a chance to print the running scenario (needed for
+    # ProgressFormatter, which only ever shows the running scenario's name).
+    formatter.on_result()
+    formatter.result(FakeStep(status="passed", duration=0.1))
+    formatter.close()
+    output = formatter._stream.getvalue()
+    assert "scenario [/] [bold] name" in output
+
+
+def test_progress_markup_in_running_name() -> None:
+    """Progress only prints the running scenario's name; use a leftover
+    non-terminal scenario so it is shown when another completes."""
+    formatter = _make_formatter(ProgressFormatter, {"mcr.colors": "false"})
+    formatter.feature(FakeFeature(name="Feat"))
+    formatter.scenario(FakeScenario(name="scenario [/] [bold] name"))
+    formatter.scenario(FakeScenario(name="other"))
+    formatter.step(FakeStep(name="s"))
+    formatter.match(None)
+    formatter.result(FakeStep(status="passed", duration=0.1))
+    formatter.close()
+    output = formatter._stream.getvalue()
+    assert "scenario [/] [bold] name" in output
+
+
+@pytest.mark.parametrize(
+    "formatter_cls",
+    [
+        ModernFormatter,
+        ModernLiveFormatter,
+        CIFormatter,
+        LogFormatter,
+        MinimalFormatter,
+    ],
+)
+def test_formatter_ansi_escape_in_name_is_stripped(formatter_cls: type) -> None:
+    """Regression: ANSI escapes in user-controlled names must never reach the
+    output stream (terminal escape injection)."""
+    formatter = _make_formatter(formatter_cls, {"mcr.colors": "false"})
+    formatter.feature(FakeFeature(name="Feat"))
+    formatter.scenario(FakeScenario(name="evil\x1b[31mRED\x1b[0m name"))
+    formatter.step(FakeStep(name="click"))
+    formatter.match(None)
+    formatter.on_result()
+    formatter.result(FakeStep(status="passed", duration=0.1))
+    formatter.close()
+    output = formatter._stream.getvalue()
+    assert "\x1b" not in output
+    assert "evil[31mRED[0m name" in output
+
+
+def test_progress_ansi_escape_in_running_name() -> None:
+    """Same regression for the progress bar's running-scenario text."""
+    formatter = _make_formatter(ProgressFormatter, {"mcr.colors": "false"})
+    formatter.feature(FakeFeature(name="Feat"))
+    formatter.scenario(FakeScenario(name="evil\x1b[31mRED\x1b[0m name"))
+    formatter.scenario(FakeScenario(name="other"))
+    formatter.step(FakeStep(name="s"))
+    formatter.match(None)
+    formatter.result(FakeStep(status="passed", duration=0.1))
+    formatter.close()
+    output = formatter._stream.getvalue()
+    assert "\x1b" not in output
+    assert "evil[31mRED[0m name" in output
+
+
+class _FakeTTY(io.StringIO):
+    """A text stream that claims to be a terminal."""
+
+    def isatty(self) -> bool:
+        return True
+
+
+def _make_tty_formatter(cls: type[BaseFormatter]) -> BaseFormatter:
+    stream = _FakeTTY()
+    opener = StreamOpener(stream=stream)
+    config = type("Config", (), {"userdata": {"mcr.colors": "false"}})()
+    return cls(opener, config)
+
+
+def test_progress_formatter_tty_no_ansi_erase() -> None:
+    """Regression: TTY progress uses \\r + padding, not the ANSI \\033[K
+    sequence that legacy Windows consoles cannot parse."""
+    formatter = _make_tty_formatter(ProgressFormatter)
+    assert formatter._is_tty
+    _run_scenario(formatter, "Auth", "User logs in", "passed")
+    formatter.close()
+    output = formatter._stream.getvalue()
+    assert "\r" in output
+    assert "\x1b[K" not in output
+
+
+def test_progress_formatter_tty_newline_in_name() -> None:
+    """A scenario name with a newline must not break the single-line bar."""
+    formatter = _make_tty_formatter(ProgressFormatter)
+    formatter.feature(FakeFeature(name="Auth"))
+    # Non-terminal scenario shows up as the "running" name in the bar.
+    formatter.scenario(FakeScenario(name="multi\nline name"))
+    line = formatter._render_line()
+    assert "\n" not in line
+    assert "\r" not in line
+    assert "multi line name" in line
+
+
+# --- Late step statuses (silently skipped after failure) ---
+
+
+def test_modern_late_skipped_steps_shown_as_skipped() -> None:
+    """Regression: steps Behave marks skipped after a failure (no result
+    event) must render as skipped, not untested or missing."""
+    formatter = _make_formatter(ModernFormatter, {"mcr.colors": "false"})
+    late_step = FakeStep(name="never runs")
+    formatter.feature(FakeFeature(name="F"))
+    formatter.scenario(FakeScenario(name="S"))
+    formatter.step(FakeStep(name="explodes"))
+    formatter.step(late_step)
+    formatter.match(None)
+    formatter.result(FakeStep(status="failed", duration=0.1, error_message="AssertionError: no"))
+    # Behave assigns skipped without emitting result().
+    late_step.status = "skipped"
+    formatter.close()
+    output = formatter._stream.getvalue()
+    assert "never runs" in output
+    step_line = next(line for line in output.splitlines() if "never runs" in line)
+    assert "⏭" in step_line
+
+
+def test_ci_late_skipped_steps_shown_as_skipped() -> None:
+    """Same regression for the ci formatter ([SKIPPED] tag)."""
+    formatter = _make_formatter(CIFormatter, {"mcr.colors": "false"})
+    late_step = FakeStep(name="never runs")
+    formatter.feature(FakeFeature(name="F"))
+    formatter.scenario(FakeScenario(name="S"))
+    formatter.step(FakeStep(name="explodes"))
+    formatter.step(late_step)
+    formatter.match(None)
+    formatter.result(FakeStep(status="failed", duration=0.1, error_message="AssertionError: no"))
+    late_step.status = "skipped"
+    formatter.close()
+    output = formatter._stream.getvalue()
+    step_line = next(line for line in output.splitlines() if "never runs" in line)
+    assert "[SKIPPED]" in step_line
+
+
+def test_ci_late_skipped_steps_emitted_before_next_scenario() -> None:
+    """Late steps must print before the following scenario's line."""
+    formatter = _make_formatter(CIFormatter, {"mcr.colors": "false"})
+    late_step = FakeStep(name="never runs")
+    formatter.feature(FakeFeature(name="F"))
+    formatter.scenario(FakeScenario(name="S1"))
+    formatter.step(FakeStep(name="explodes"))
+    formatter.step(late_step)
+    formatter.match(None)
+    formatter.result(FakeStep(status="failed", duration=0.1, error_message="AssertionError: no"))
+    late_step.status = "skipped"
+    formatter.scenario(FakeScenario(name="S2"))
+    formatter.step(FakeStep(name="ok"))
+    formatter.match(None)
+    formatter.result(FakeStep(status="passed", duration=0.1))
+    formatter.close()
+    output = formatter._stream.getvalue()
+    lines = output.splitlines()
+    late_idx = next(i for i, line in enumerate(lines) if "never runs" in line)
+    s2_idx = next(i for i, line in enumerate(lines) if "S2" in line)
+    assert late_idx < s2_idx
 
 
 # --- Leftover scenarios ---

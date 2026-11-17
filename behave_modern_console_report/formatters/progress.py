@@ -25,6 +25,7 @@ class ProgressFormatter(BaseFormatter):
         super().__init__(stream, config)
         self._actual_stream = self._stream
         self._last_completed = -1
+        self._last_width = 0
         self._is_tty = hasattr(self._actual_stream, "isatty") and self._actual_stream.isatty()
 
     def _use_colors(self) -> bool:
@@ -51,6 +52,8 @@ class ProgressFormatter(BaseFormatter):
         bar = "█" * filled + "░" * (width - filled)
         running = self._running_scenario()
         running_text = running.name if running else "done"
+        # Newlines and carriage returns would break the single-line display.
+        running_text = running_text.replace("\r", " ").replace("\n", " ")
         if self._use_colors():
             bar = f"{_ANSI_GREEN}{bar}{_ANSI_RESET}"
             running_text = f"{_ANSI_DIM}{running_text}{_ANSI_RESET}"
@@ -63,8 +66,12 @@ class ProgressFormatter(BaseFormatter):
 
     def _print_line(self) -> None:
         if self._is_tty:
-            self._actual_stream.write("\r\033[K")
-            self._actual_stream.write(self._render_line())
+            # Pad to the longest line seen so the previous line is fully
+            # overwritten. Plain \r + spaces works on every terminal, unlike
+            # ANSI erase sequences which legacy Windows consoles do not parse.
+            line = self._render_line()
+            self._last_width = max(self._last_width, len(line))
+            self._actual_stream.write("\r" + line.ljust(self._last_width))
         else:
             self._actual_stream.write(self._render_line() + "\n")
         self._actual_stream.flush()

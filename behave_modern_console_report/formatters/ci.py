@@ -25,7 +25,9 @@ class CIFormatter(BaseFormatter):
         self._printed_scenarios: set[int] = set()
         self._printed_steps: set[int] = set()
 
-    def _emit_scenario(self, feature: Feature, scenario: Scenario) -> None:
+    def _emit_scenario(
+        self, feature: Feature, scenario: Scenario, *, only_terminal: bool = True
+    ) -> None:
         """Print a scenario line and its steps (first time only)."""
         self._printed_scenarios.add(id(scenario))
         line = Text()
@@ -35,25 +37,40 @@ class CIFormatter(BaseFormatter):
         )
         line.append(f" {feature.name} / {scenario.name} ({format_duration(scenario.duration)})")
         self._console.print(line)
-        if self.formatter_config.show_steps:
-            for step in scenario.steps:
-                if id(step) in self._printed_steps:
-                    continue
-                self._printed_steps.add(id(step))
-                step_text = Text()
-                step_text.append(
-                    f"  [{step.status.name.upper()}]",
-                    style=self._status_style(step.status.name),
-                )
-                step_text.append(f" {step.keyword} {step.name} ({format_duration(step.duration)})")
-                self._console.print(step_text)
+        self._emit_steps(scenario, only_terminal=only_terminal)
 
-    def _emit_pending(self) -> None:
-        """Print all terminal scenarios that have not been emitted yet."""
+    def _emit_steps(self, scenario: Scenario, *, only_terminal: bool = True) -> None:
+        """Print step lines that have not been emitted yet.
+
+        Steps Behave marks skipped after a failure get their status assigned
+        without a ``result()`` event, so mid-run only terminal steps are
+        emitted; leftovers are flushed when the run finishes.
+        """
+        if not self.formatter_config.show_steps:
+            return
+        for step in scenario.steps:
+            if id(step) in self._printed_steps:
+                continue
+            if only_terminal and not step.is_terminal:
+                continue
+            self._printed_steps.add(id(step))
+            step_text = Text()
+            step_text.append(
+                f"  [{step.status.name.upper()}]",
+                style=self._status_style(step.status.name),
+            )
+            step_text.append(f" {step.keyword} {step.name} ({format_duration(step.duration)})")
+            self._console.print(step_text)
+
+    def _emit_pending(self, *, final: bool = False) -> None:
+        """Print all terminal scenarios and steps not emitted yet."""
+        self._collector.sync_scenarios()
         for feature in self._collector.execution.features:
             for scenario in feature.scenarios:
                 if scenario.is_terminal and id(scenario) not in self._printed_scenarios:
-                    self._emit_scenario(feature, scenario)
+                    self._emit_scenario(feature, scenario, only_terminal=not final)
+                elif id(scenario) in self._printed_scenarios:
+                    self._emit_steps(scenario, only_terminal=not final)
 
     def on_result(self) -> None:
         """Print a colored line for each newly completed scenario."""
@@ -62,7 +79,7 @@ class CIFormatter(BaseFormatter):
     def on_close(self) -> None:
         """Print a final progress bar, summary, and failure details."""
         cfg = self.formatter_config
-        self._emit_pending()
+        self._emit_pending(final=True)
         if cfg.show_progress:
             self._console.print(progress_bar(self._collector.execution))
         self._console.print(summary_block(self._collector.execution))

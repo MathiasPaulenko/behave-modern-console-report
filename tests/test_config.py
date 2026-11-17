@@ -73,3 +73,38 @@ def test_config_formatter_specific_overrides_global() -> None:
         ),
     )
     assert config.colors is True
+
+
+def test_config_non_dict_userdata() -> None:
+    """Regression: a non-dict userdata attribute must not crash the config."""
+    behave_config = type("Config", (), {"userdata": "not-a-dict"})()
+    config = FormatterConfig("ci", behave_config)
+    assert config.colors is True
+    assert config.show_progress is True
+
+
+def test_config_missing_userdata_attribute() -> None:
+    """A behave config without userdata falls back to defaults."""
+    behave_config = type("Config", (), {})()
+    config = FormatterConfig("ci", behave_config)
+    assert config.colors is True
+
+
+def test_config_bool_values_with_whitespace() -> None:
+    """Regression: -D values with surrounding whitespace must still parse."""
+    config = FormatterConfig(
+        "ci",
+        FakeBehaveConfig({"mcr.colors": " false ", "mcr.ci.show_steps": " true "}),
+    )
+    assert config.colors is False
+    assert config.show_steps is True
+
+
+def test_config_bool_variants() -> None:
+    """Truthy spellings: 1, yes, on; anything else is False."""
+    for truthy in ("1", "yes", "on", "TRUE"):
+        config = FormatterConfig("ci", FakeBehaveConfig({"mcr.colors": truthy}))
+        assert config.colors is True, truthy
+    for falsy in ("0", "no", "off", "FALSE", "banana"):
+        config = FormatterConfig("ci", FakeBehaveConfig({"mcr.colors": falsy}))
+        assert config.colors is False, falsy

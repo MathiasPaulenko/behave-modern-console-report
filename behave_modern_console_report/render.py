@@ -132,7 +132,8 @@ def failures_block(execution: Execution) -> Text:
             if step.is_failed and step.error:
                 if step.error.type:
                     lines.append_text(Text(f"  {step.error.type}\n", style="red"))
-                lines.append_text(Text(f"  {step.error.message}\n", style="red"))
+                for message_line in step.error.message.splitlines() or [""]:
+                    lines.append_text(Text(f"  {message_line}\n", style="red"))
                 if step.error.traceback:
                     for tb_line in step.error.traceback.splitlines():
                         lines.append_text(Text(f"  {tb_line}\n", style="dim red"))
