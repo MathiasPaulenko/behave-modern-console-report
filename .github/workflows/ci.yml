@@ -60,12 +60,10 @@ jobs:
         run: |
           cd examples
           # The "Locked account shows error" scenario fails on purpose.
-          behave -f minimal -o /tmp/mcr_minimal.txt || true
-          test -s /tmp/mcr_minimal.txt
-          behave -f modern-console -o /tmp/mcr_modern.txt -D mcr.colors=false || true
-          test -s /tmp/mcr_modern.txt
-          behave -f progress -o /tmp/mcr_progress.txt -D mcr.colors=false || true
-          test -s /tmp/mcr_progress.txt
+          for fmt in minimal modern-console modern-console-live ci log progress; do
+            behave -f "$fmt" -o "/tmp/mcr_${fmt}.txt" -D mcr.colors=false || true
+            test -s "/tmp/mcr_${fmt}.txt"
+          done
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
